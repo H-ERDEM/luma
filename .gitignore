@@ -9,3 +9,5 @@ backend/.data/
 backend/.env
 frontend/.env.local
 *.tsbuildinfo
+.DS_Store
+dist/
