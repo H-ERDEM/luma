@@ -5,6 +5,10 @@
   "type": "commonjs",
   "scripts": {
     "bootstrap": "ts-node scripts/bootstrap.ts",
+    "dev:localnet": "ENV_FILE=.env.localnet ts-node src/server.ts",
+    "dev:devnet": "ENV_FILE=.env.devnet ts-node src/server.ts",
+    "bootstrap:localnet": "ENV_FILE=.env.localnet ts-node scripts/bootstrap.ts",
+    "bootstrap:devnet": "ENV_FILE=.env.devnet ts-node scripts/bootstrap.ts",
     "dev": "ts-node src/server.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/src/server.js",

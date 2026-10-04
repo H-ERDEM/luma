@@ -11,3 +11,11 @@ frontend/.env.local
 *.tsbuildinfo
 .DS_Store
 dist/
+
+# Ortam profilleri (.example dosyaları izlenir)
+backend/.env.*
+frontend/.env.*
+!backend/.env.example
+!backend/.env.*.example
+!frontend/.env.example
+!frontend/.env.*.example

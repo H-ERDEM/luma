@@ -1,6 +1,9 @@
-import "dotenv/config";
+import dotenv from "dotenv";
 import os from "os";
 import path from "path";
+
+/** ENV_FILE ile seçilen dosya (varsayılan .env); .env.localnet / .env.devnet arasında geçiş içindir. */
+dotenv.config({ path: process.env.ENV_FILE ?? ".env" });
 
 function expandHome(p: string): string {
   return p.startsWith("~") ? path.join(os.homedir(), p.slice(1)) : p;
@@ -18,7 +21,7 @@ const backendRoot = path.resolve(__dirname, "..");
 
 export const env = {
   rpcUrl: required("RPC_URL", "http://127.0.0.1:8899"),
-  adminKeypairPath: expandHome(required("ADMIN_KEYPAIR_PATH", "~/.config/solana/id.json")),
+  adminKeypairPath: path.resolve(backendRoot, expandHome(required("ADMIN_KEYPAIR_PATH", "~/.config/solana/id.json"))),
   idlDir: path.resolve(backendRoot, required("IDL_DIR", "../target/idl")),
   keysDir: path.resolve(backendRoot, required("KEYS_DIR", "./.keys")),
   dataDir: path.resolve(backendRoot, required("DATA_DIR", "./.data")),

@@ -6,7 +6,9 @@
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start -p 3000",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "use:localnet": "cp .env.localnet .env.local",
+    "use:devnet": "cp .env.devnet .env.local"
   },
   "dependencies": {
     "@coral-xyz/anchor": "0.30.1",
