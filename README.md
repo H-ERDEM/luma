@@ -80,7 +80,8 @@ Token hesabının 32–64. baytları hesap sahibidir. Bu sayede istemci ekstra h
 | `initialize_config` | admin | Yetki anahtarlarını ve USDC mint'ini sabitler |
 | `update_config` | admin | Anahtar rotasyonu |
 | `set_kyc_status` | kyc_authority | KYC kaydını açar veya günceller |
-| `initialize_batch` | admin | Parti, Token-2022 mint'i (freeze + transfer hook), escrow ve rezerv |
+| `initialize_batch` | admin | Parti, escrow ve rezerv kasaları, USDC ATA'ları; mint adresini kaydeder |
+| `initialize_batch_mint` | admin | Token-2022 mint'i (freeze + transfer hook). `initialize_batch` ile **aynı işlemde**, ondan sonra gönderilir (SBF stack sınırı nedeniyle ayrıldı) |
 | `initialize_extra_account_meta_list` (hook) | herkes | Mint için KYC meta listesini bir kez yazar |
 | `fund_reserve` | herkes | Rezerv kasasına serbest likidite ekler |
 | `fund_and_mint` | KYC onaylı alıcı | `adet × 0,45` USDC escrow'a gider, aynı adet token basılır (gün ≤ `funding_close_day`) |
@@ -128,7 +129,7 @@ Transferlerden sonra mint arzı ve escrow bakiyesi yeniden yüklenir, `assert_so
 | Araç | Sürüm |
 |---|---|
 | Rust | stable (rustup) |
-| Solana / Agave CLI | 2.1.x (platform-tools rustc 1.79; `Cargo.lock` v4 bu sürüme göre sabitlendi) |
+| Solana CLI | 1.18.26 (bu projenin derlendiği ve test edildiği sürüm). SBF araç zinciri `--tools-version v1.43` ile seçilir |
 | Anchor CLI | 0.30.1 (`avm install 0.30.1 && avm use 0.30.1`) |
 | Node.js | 20+ |
 | Cüzdan | Phantom, Solflare veya Backpack (Wallet Standard ile otomatik algılanır) |
@@ -138,11 +139,18 @@ Transferlerden sonra mint arzı ve escrow bakiyesi yeniden yüklenir, `assert_so
 ### Program ID'lerini eşitleme
 
 ```bash
-npm install                 # kök: test bağımlılıkları
-anchor build                # ilk derleme target/deploy/*-keypair.json üretir
-anchor keys sync            # declare_id! ve Anchor.toml'u kendi anahtarlarınıza eşitler
-anchor build                # ID'ler güncellendikten sonra yeniden derle
+npm install                                      # kök: test bağımlılıkları
+anchor build -- --tools-version v1.43            # ilk derleme target/deploy/*-keypair.json üretir
+anchor keys sync                                 # declare_id! ve Anchor.toml'u kendi anahtarlarınıza eşitler
+anchor build -- --tools-version v1.43            # ID'ler güncellendikten sonra yeniden derle
 ```
+
+**Derleme notları**
+- `--tools-version v1.43` olmadan varsayılan araç zinciri bu depodaki bağımlılıkları derleyemeyebilir.
+- Derleme çıktısında `Stack offset … exceeded max offset of 4096` satırı çıkmamalıdır. Bu hata çıkış kodunu **bozmaz**, yalnızca uyarı olarak yazılır; her derlemeden sonra çıktıda aratın (`anchor build … 2>&1 | grep "Stack offset"`).
+- `target/deploy/*-keypair.json` dosyaları program ID'lerinizdir ve `anchor clean` onları siler. Yedekleyin ve izinlerini kısıtlayın (`chmod 600`).
+- Başka bir `cargo` komutu `PATH`'inizde Rust'ınkinden önce geliyorsa `cargo build-sbf` bulunamaz; `which cargo` ile `~/.cargo/bin/cargo` olduğunu doğrulayın.
+- macOS'ta `anchor test` ledger'ı açarken `._genesis.bin` hatası alırsanız `COPYFILE_DISABLE=1 anchor test` kullanın.
 
 `luma_batch`, hook program ID'sini kodda sabit tutmaz; `ProtocolConfig.transfer_hook_program` alanından okur. Hook ise `luma_batch::ID` değerini crate bağımlılığından alır. Bu nedenle `keys sync` dışında elle düzenlemeniz gereken bir ID yoktur.
 
@@ -193,11 +201,39 @@ npm run dev                 # http://localhost:3000
 
 Cüzdanınızı yerel ağa bağlayın. Örneğin Phantom'da: Ayarlar → Geliştirici ayarları → Testnet modu → Solana Localnet. Jüri konsolunun 1. adımı cüzdanınıza SOL ve test USDC'si gönderir.
 
+### Ortam profilleri (localnet ↔ devnet)
+
+Gerçek `.env*` dosyaları git'e girmez; şablonlar `*.example` olarak izlenir.
+
+| | Backend | Frontend |
+|---|---|---|
+| Localnet | `backend/.env.localnet` (`.env.localnet.example`'dan) | `frontend/.env.localnet` |
+| Devnet | `backend/.env.devnet` (`.env.devnet.example`'dan) | `frontend/.env.devnet` |
+
+```bash
+# Backend: ENV_FILE ile profil seçilir (varsayılan .env)
+cd backend
+npm run bootstrap:devnet && npm run dev:devnet     # ya da bootstrap:localnet / dev:localnet
+
+# Frontend: seçilen profili .env.local'e kopyalar, sonra yeniden başlatın
+cd frontend
+npm run use:devnet && npm run dev                  # ya da use:localnet
+```
+
+Devnet profili ayrı bir admin anahtarı (`backend/.keys/devnet-admin.json`), ayrı oracle anahtar klasörü (`.keys/devnet`) ve ayrı durum klasörü (`.data/devnet`) kullanır; localnet ayarlarınız etkilenmez. RPC adresi sağlayıcı anahtarı içerebilir: `.env.devnet` dosyalarına yazın, `*.example` dosyalarına yazmayın. Backend adresi `/api/health` yanıtında ve loglarda maskelenir.
+
+### Phantom ile test
+
+- Phantom'da **Ayarlar → Geliştirici ayarları → Testnet modu** açık ve ağ **Solana Devnet** (ya da Localnet) olmalıdır.
+- ⚠️ **Phantom'un Chrome yan paneli açıkken onay penceresi açılmayabilir** ve arayüz "Phantom'da onay bekleniyor…" durumunda kalır. Onay penceresi açılmadıysa Phantom yan panelini kapatıp tekrar deneyin. Yine de görünmezse tarayıcı araç çubuğundaki Phantom simgesine tıklayın. Bekleyen bir istek takılı kalırsa Phantom'dan reddedin.
+- Jüri konsolundaki adımlar bir partiyi kapatabilir (3. ve 4. adımlar). Kapalı partide 1-4. adımlar devre dışıdır; önce **Yeni parti başlat**'a basın.
+
 ### Backend API
 
 | Yöntem | Yol | Açıklama |
 |---|---|---|
 | GET | `/api/telemetry/current` | Zincirdeki son telemetri, canlı sensör okuması, oracle geçmişi, teorik eğri |
+| GET | `/api/snapshot` | Durum ve telemetri tek yanıtta (arayüz bunu yoklar). Kısa süreli paylaşılan önbellek; `?fresh=1` ile atlanır |
 | GET | `/api/batch/state` | Aktif parti adresleri, durum, fiyatlar, kasa bakiyeleri |
 | GET | `/api/kyc/:wallet` | KYC kaydı |
 | POST | `/api/kyc/verify` | `{ wallet }` — cüzdanı zincirde onaylar (demo KYC sağlayıcısı) |
@@ -223,30 +259,23 @@ anchor keys sync && anchor build
 anchor deploy --provider.cluster devnet
 ```
 
-Backend için `backend/.env` dosyasında şu değerleri ayarlayın:
-
-```
-RPC_URL=https://api.devnet.solana.com
-ADMIN_KEYPAIR_PATH=~/.config/solana/id.json
-```
-
-Ardından:
+Kişisel cüzdanınız yerine bu iş için **ayrı bir admin anahtarı** kullanın (yükseltme yetkisi de onda olur):
 
 ```bash
-cd backend && npm run bootstrap && npm run dev
+solana-keygen new --no-bip39-passphrase -o backend/.keys/devnet-admin.json
+anchor deploy --provider.cluster devnet --provider.wallet backend/.keys/devnet-admin.json
 ```
 
-Frontend için `frontend/.env.local` dosyasında:
+Backend ve frontend için `.env.devnet.example` dosyalarını `.env.devnet` olarak kopyalayın (yukarıdaki "Ortam profilleri"), `RPC_URL` ve `NEXT_PUBLIC_RPC_URL` satırlarını RPC sağlayıcınızın adresiyle değiştirin; backend ve frontend için **ayrı** sağlayıcı anahtarları kullanmanız önerilir (`NEXT_PUBLIC_` değişkenleri tarayıcıya gömülür). Ardından:
 
-```
-NEXT_PUBLIC_RPC_URL=https://api.devnet.solana.com
-NEXT_PUBLIC_CLUSTER=devnet
-NEXT_PUBLIC_BACKEND_URL=<backend adresi>
+```bash
+cd backend && npm run bootstrap:devnet && npm run dev:devnet
+cd frontend && npm run use:devnet && npm run dev
 ```
 
 Notlar:
 - Admin cüzdanı faucet adımında yatırımcılara SOL gönderir. Demo öncesi admin bakiyesinin yeterli olduğundan emin olun.
-- Genel RPC uç noktası hız sınırlıdır. Canlı sunum için özel bir devnet RPC sağlayıcısı önerilir.
+- Genel RPC uç noktası (`api.devnet.solana.com`) hız sınırlıdır (429). Canlı sunum için özel bir devnet RPC sağlayıcısı önerilir. Backend durum önbelleği ve arayüz yoklaması yükü azaltır.
 - Telemetrinin geçerlilik süresi (`max_telemetry_age_secs`) 3600 saniyedir. Sunumdan bir saatten uzun süre önce ilerletilmiş bir partide erken çıkış `StaleTelemetry` hatası verir. Yeni bir güncelleme yazın veya partiyi sıfırlayın.
 
 ---

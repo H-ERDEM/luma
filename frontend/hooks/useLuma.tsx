@@ -1,9 +1,10 @@
 "use client";
 
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { useAnchorWallet, useConnection } from "@solana/wallet-adapter-react";
-import { PublicKey } from "@solana/web3.js";
+import { AnchorWallet, useAnchorWallet, useConnection } from "@solana/wallet-adapter-react";
+import { PublicKey, Transaction, VersionedTransaction } from "@solana/web3.js";
 import { api, BatchState, KycStatus, TelemetryFeed } from "@/lib/api";
+import type { TxPhase } from "@/lib/txPhase";
 import {
   assetAta,
   claimDefaultRefund,
@@ -32,6 +33,8 @@ interface LumaContextValue {
   holdings: bigint;
   usdcBalance: bigint;
   log: LogEntry[];
+  /** Çalışan cüzdan işleminin aşaması (hazırlanıyor / Phantom onayı / zincirde onay). */
+  txPhase: TxPhase;
   pushLog: (entry: Omit<LogEntry, "id">) => void;
   refresh: () => Promise<void>;
   /** Bağlı cüzdanın güncel fide bakiyesini doğrudan zincirden okur (render kapanışından bağımsız). */
@@ -58,6 +61,7 @@ export function LumaProvider({ children }: { children: ReactNode }) {
   const [holdings, setHoldings] = useState<bigint>(0n);
   const [usdcBalance, setUsdcBalance] = useState<bigint>(0n);
   const [log, setLog] = useState<LogEntry[]>([]);
+  const [txPhase, setTxPhase] = useState<TxPhase>(null);
   const logId = useRef(0);
 
   const pushLog = useCallback((entry: Omit<LogEntry, "id">) => {
@@ -182,11 +186,36 @@ export function LumaProvider({ children }: { children: ReactNode }) {
   const withProgram = useCallback(
     async (task: (args: { program: Awaited<ReturnType<typeof loadProgram>>; state: BatchState }) => Promise<string>) => {
       if (!wallet) throw new Error("Önce cüzdanınızı bağlayın.");
-      const fresh = await api.batchState(true);
-      const program = await loadProgram(connection, wallet);
-      const signature = await task({ program, state: fresh });
-      await refresh();
-      return signature;
+      setTxPhase("preparing");
+      try {
+        const fresh = await api.batchState(true);
+        // İmza isteğini izleyerek arayüzün "Phantom'da onay bekleniyor" aşamasını göstermesini sağlar.
+        const tracked: AnchorWallet = {
+          publicKey: wallet.publicKey,
+          signTransaction: async <T extends Transaction | VersionedTransaction>(tx: T): Promise<T> => {
+            setTxPhase("signing");
+            try {
+              return await wallet.signTransaction(tx);
+            } finally {
+              setTxPhase("confirming");
+            }
+          },
+          signAllTransactions: async <T extends Transaction | VersionedTransaction>(txs: T[]): Promise<T[]> => {
+            setTxPhase("signing");
+            try {
+              return await wallet.signAllTransactions(txs);
+            } finally {
+              setTxPhase("confirming");
+            }
+          },
+        };
+        const program = await loadProgram(connection, tracked);
+        const signature = await task({ program, state: fresh });
+        await refresh();
+        return signature;
+      } finally {
+        setTxPhase(null);
+      }
     },
     [connection, wallet, refresh],
   );
@@ -208,6 +237,7 @@ export function LumaProvider({ children }: { children: ReactNode }) {
       holdings,
       usdcBalance,
       log,
+      txPhase,
       pushLog,
       refresh,
       fetchHoldings,
@@ -216,7 +246,7 @@ export function LumaProvider({ children }: { children: ReactNode }) {
       claimRefund: (a) => withProgram(({ program, state: s }) => claimDefaultRefund(program, s, wallet!.publicKey, a)),
       redeem: (a) => withProgram(({ program, state: s }) => redeemAndBurn(program, s, wallet!.publicKey, a)),
     }),
-    [wallet, state, feed, backendError, kyc, holdings, usdcBalance, log, pushLog, refresh, fetchHoldings, withProgram],
+    [wallet, state, feed, backendError, kyc, holdings, usdcBalance, log, txPhase, pushLog, refresh, fetchHoldings, withProgram],
   );
 
   return <LumaContext.Provider value={value}>{children}</LumaContext.Provider>;
