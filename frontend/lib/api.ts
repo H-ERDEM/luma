@@ -115,7 +115,11 @@ const post = <T>(path: string, body: unknown = {}) =>
 
 export const api = {
   idl: (name: "luma_batch" | "luma_transfer_hook") => request<Idl>(`/api/idl/${name}`),
-  batchState: () => request<BatchState>("/api/batch/state"),
+  /** `fresh`: backend önbelleğini atlar (kendi işleminizden hemen sonra). */
+  batchState: (fresh = false) => request<BatchState>(`/api/batch/state${fresh ? "?fresh=1" : ""}`),
+  /** Durum + telemetri tek istekte (yoklama bunu kullanır). */
+  snapshot: (fresh = false) =>
+    request<{ state: BatchState; feed: TelemetryFeed }>(`/api/snapshot${fresh ? "?fresh=1" : ""}`),
   telemetry: () => request<TelemetryFeed>("/api/telemetry/current"),
   kyc: (wallet: string) => request<KycStatus>(`/api/kyc/${wallet}`),
   verifyKyc: (wallet: string) => post<{ signature: string }>("/api/kyc/verify", { wallet }),

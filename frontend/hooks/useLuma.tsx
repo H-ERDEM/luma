@@ -44,7 +44,9 @@ interface LumaContextValue {
 }
 
 const LumaContext = createContext<LumaContextValue | null>(null);
-const POLL_MS = 3_000;
+const POLL_MS = 5_000;
+/** Art arda hatalarda yoklama aralığı en fazla bu kadar uzar. */
+const MAX_POLL_MS = 30_000;
 
 export function LumaProvider({ children }: { children: ReactNode }) {
   const { connection } = useConnection();
@@ -64,41 +66,119 @@ export function LumaProvider({ children }: { children: ReactNode }) {
     setLog((prev) => [{ ...entry, id }, ...prev].slice(0, 30));
   }, []);
 
-  const refresh = useCallback(async () => {
-    try {
-      const [s, f] = await Promise.all([api.batchState(), api.telemetry()]);
-      setState(s);
-      setFeed(f);
-      setBackendError(null);
-      if (wallet) {
-        const [k, h, u] = await Promise.all([
-          api.kyc(wallet.publicKey.toBase58()),
-          tokenBalance(connection, assetAta(s, wallet.publicKey)),
-          tokenBalance(connection, usdcAta(s, wallet.publicKey)),
-        ]);
-        setKyc(k);
-        setHoldings(h);
-        setUsdcBalance(u);
-      } else {
-        setKyc(null);
-        setHoldings(0n);
-        setUsdcBalance(0n);
-      }
-    } catch (err) {
-      setBackendError(err instanceof Error ? err.message : String(err));
-    }
-  }, [connection, wallet]);
+  const walletRef = useRef(wallet);
+  walletRef.current = wallet;
+  const inFlight = useRef<Promise<void> | null>(null);
+  const failures = useRef(0);
 
+  /** Durum + telemetri (tek HTTP isteği) ve cüzdan bakiyeleri. KYC burada çekilmez. */
+  const loadOnce = useCallback(
+    async (fresh: boolean) => {
+      try {
+        const { state: s, feed: f } = await api.snapshot(fresh);
+        setState(s);
+        setFeed(f);
+        setBackendError(null);
+        failures.current = 0;
+        const w = walletRef.current;
+        if (w) {
+          const [h, u] = await Promise.all([
+            tokenBalance(connection, assetAta(s, w.publicKey)),
+            tokenBalance(connection, usdcAta(s, w.publicKey)),
+          ]);
+          setHoldings(h);
+          setUsdcBalance(u);
+        } else {
+          setHoldings(0n);
+          setUsdcBalance(0n);
+        }
+      } catch (err) {
+        failures.current += 1;
+        setBackendError(err instanceof Error ? err.message : String(err));
+      }
+    },
+    [connection],
+  );
+
+  /** KYC nadiren değişir: yalnızca cüzdan bağlanınca ve işlemlerden sonra okunur. */
+  const refreshKyc = useCallback(async () => {
+    const w = walletRef.current;
+    if (!w) {
+      setKyc(null);
+      return;
+    }
+    try {
+      setKyc(await api.kyc(w.publicKey.toBase58()));
+    } catch {
+      // Geçici hata: bir sonraki işlemde ya da cüzdan yeniden bağlanınca yeniden denenir.
+    }
+  }, []);
+
+  /** Açık yenileme (işlemden sonra): çalışan turu bekler, önbelleği atlar, KYC'yi de okur. */
+  const refresh = useCallback(async () => {
+    while (inFlight.current) await inFlight.current;
+    const task = (async () => {
+      await loadOnce(true);
+      await refreshKyc();
+    })();
+    inFlight.current = task;
+    try {
+      await task;
+    } finally {
+      if (inFlight.current === task) inFlight.current = null;
+    }
+  }, [loadOnce, refreshKyc]);
+
+  // Yoklama: tek seferde bir istek; sekme gizliyken durur; hatada aralık uzar.
   useEffect(() => {
-    void refresh();
-    const timer = setInterval(() => void refresh(), POLL_MS);
-    return () => clearInterval(timer);
-  }, [refresh]);
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const schedule = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => void tick(), Math.min(POLL_MS * 2 ** failures.current, MAX_POLL_MS));
+    };
+    const tick = async () => {
+      if (!cancelled && !document.hidden && inFlight.current === null) {
+        const task = loadOnce(false);
+        inFlight.current = task;
+        try {
+          await task;
+        } finally {
+          if (inFlight.current === task) inFlight.current = null;
+        }
+      }
+      if (!cancelled) schedule();
+    };
+    const onVisibility = () => {
+      if (!document.hidden) {
+        clearTimeout(timer);
+        void tick();
+      }
+    };
+
+    void tick();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [loadOnce]);
+
+  // Cüzdan bağlanınca/değişince KYC ve bakiyeleri hemen oku.
+  const walletKey = wallet?.publicKey.toBase58() ?? null;
+  useEffect(() => {
+    void (async () => {
+      await refreshKyc();
+      await loadOnce(false);
+    })();
+  }, [walletKey, refreshKyc, loadOnce]);
 
   const withProgram = useCallback(
     async (task: (args: { program: Awaited<ReturnType<typeof loadProgram>>; state: BatchState }) => Promise<string>) => {
       if (!wallet) throw new Error("Önce cüzdanınızı bağlayın.");
-      const fresh = await api.batchState();
+      const fresh = await api.batchState(true);
       const program = await loadProgram(connection, wallet);
       const signature = await task({ program, state: fresh });
       await refresh();
