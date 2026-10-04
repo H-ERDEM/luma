@@ -260,5 +260,10 @@ export function useLuma(): LumaContextValue {
 
 export function errorText(err: unknown): string {
   const e = err as { error?: { errorMessage?: string }; message?: string };
-  return e.error?.errorMessage ?? e.message ?? String(err);
+  const text = e.error?.errorMessage ?? e.message ?? String(err);
+  // RPC hız sınırı: ham HTTP hatası yerine ne yapılacağını söyle.
+  if (/\b429\b|too many requests/i.test(text)) {
+    return "RPC şu an yoğun (429). Birkaç saniye bekleyip tekrar deneyin.";
+  }
+  return text;
 }
