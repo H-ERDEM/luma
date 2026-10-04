@@ -13,6 +13,7 @@ import {
   createMint,
   getAccount,
   getAssociatedTokenAddressSync,
+  TokenAccountNotFoundError,
   getMint,
   getOrCreateAssociatedTokenAccount,
   mintTo,
@@ -237,6 +238,28 @@ export class LumaClient {
     const record = await this.account("kycRegistry").fetchNullable(kycPda(wallet, this.batchProgram.programId));
     if (record === null) return { exists: false, approved: false, updatedAt: null };
     return { exists: true, approved: Boolean(record.isApproved), updatedAt: Number(record.updatedAt.toString()) };
+  }
+
+  /**
+   * Cüzdanın zincirdeki USDC bakiyesi. Hesap yoksa 0n; RPC hatası ise HATA fırlatır (belirsizken
+   * "0" varsaymak faucet'in üst sınırı aşmasına yol açardı).
+   */
+  async usdcBalance(owner: PublicKey, usdcMint: PublicKey): Promise<bigint> {
+    const ata = getAssociatedTokenAddressSync(usdcMint, owner, true, TOKEN_PROGRAM_ID);
+    try {
+      return (await getAccount(this.connection, ata, "confirmed", TOKEN_PROGRAM_ID)).amount;
+    } catch (err) {
+      if (err instanceof TokenAccountNotFoundError) return 0n;
+      throw err;
+    }
+  }
+
+  usdcAtaAddress(owner: PublicKey, usdcMint: PublicKey): PublicKey {
+    return getAssociatedTokenAddressSync(usdcMint, owner, true, TOKEN_PROGRAM_ID);
+  }
+
+  async lamportsOf(owner: PublicKey): Promise<number> {
+    return this.connection.getBalance(owner, "confirmed");
   }
 
   /** Mock USDC basar; alıcının ATA'sını gerekirse oluşturur ve ATA adresini döndürür. */

@@ -236,13 +236,33 @@ Devnet profili ayrı bir admin anahtarı (`backend/.keys/devnet-admin.json`), ay
 | GET | `/api/snapshot` | Durum ve telemetri tek yanıtta (arayüz bunu yoklar). Kısa süreli paylaşılan önbellek; `?fresh=1` ile atlanır |
 | GET | `/api/batch/state` | Aktif parti adresleri, durum, fiyatlar, kasa bakiyeleri |
 | GET | `/api/kyc/:wallet` | KYC kaydı |
-| POST | `/api/kyc/verify` | `{ wallet }` — cüzdanı zincirde onaylar (demo KYC sağlayıcısı) |
+| POST | `/api/kyc/verify` | `{ wallet }` — cüzdanı zincirde onaylar (demo KYC sağlayıcısı). Zaten onaylıysa zincire yazmaz (`alreadyApproved`). IP başına sınırlıdır |
 | GET | `/api/idl/:name` | `luma_batch` veya `luma_transfer_hook` IDL'i |
 | POST | `/demo/advance-days` | `{ targetDay }` — 5 günlük adımlarla ilerler; DON ve Ed25519 yollarını dönüşümlü kullanır |
 | POST | `/demo/trigger-outage` | 33,5 °C ve akış 0 telemetrisini yazar, ardından `trigger_parametric_default` çağırır |
 | POST | `/demo/settle-harvest` | Gerekirse 40. güne ilerler; `dolaşım × 250 g × 3,20 USDC/kg` OTC tutarıyla uzlaştırır |
-| POST | `/demo/faucet` | `{ wallet }` — 100 test USDC ve en az 0,05 SOL gönderir |
-| POST | `/demo/reset` | Yeni parti başlatır (sigorta ve hasat senaryoları partiyi kapatır) |
+| POST | `/demo/faucet` | `{ wallet }` — cüzdanın test USDC bakiyesini üst sınıra (varsayılan 100) **tamamlar**, en az 0,05 SOL gönderir. Cüzdan başına ve günlük sınırlara tabidir (aşağıya bakın) |
+| POST | `/demo/reset` | Yeni parti başlatır (sigorta ve hasat senaryoları partiyi kapatır). `DEMO_RESET_TOKEN` tanımlıysa `x-demo-token` başlığı gerekir |
+
+
+### Demo uç noktalarının korumaları
+
+Demo uç noktaları herkese açık bir adreste kötüye kullanılabilir (sınırsız test USDC, admin SOL'unun tüketilmesi, jürinin partisinin sıfırlanması). Bunlar için sınırlar vardır; hepsi ortam değişkeniyle ayarlanır ve sayaçlar **bellektedir** (sunucu yeniden başlarsa sıfırlanır, durumsuz mimariyle uyumlu).
+
+| Koruma | Ayar (varsayılan) | Davranış |
+|---|---|---|
+| Cüzdan başına USDC üst sınırı | `FAUCET_USDC_CAP` (100) | Zincirdeki bakiyeye bakar, yalnızca eksik kısmı tamamlar; sınırdaysa hiçbir şey basmaz |
+| Cüzdan başına bekleme | `FAUCET_WALLET_MAX_PER_DAY` (5) | 24 saatte en fazla bu kadar **gerçek** doldurma; aşılırsa `429` ve `Retry-After` |
+| Günlük küresel bütçe (UTC) | `FAUCET_DAILY_BUDGET_USDC` (5000), `FAUCET_DAILY_BUDGET_SOL` (2) | Dolunca `503` ve `Retry-After` |
+| Admin SOL uyarısı | `ADMIN_MIN_SOL` (3) | Altına inince SOL desteği kapanır ve `/api/health` **503** + `adminLowSol:true` döner; 0,1 SOL altında faucet tamamen durur |
+| IP başına istek sınırı | `RATE_LIMIT_MAX` (60), `RATE_LIMIT_WINDOW_SEC` (60) | `/api/kyc/verify` ve `/demo/*` için; aşılırsa `429` ve `Retry-After` |
+| Reset anahtarı | `DEMO_RESET_TOKEN` (boş) | Doluysa yalnızca `/demo/reset` için `x-demo-token` gerekir; diğer konsol işlemleri anahtarsız kalır |
+
+Dağıtım notları:
+- **Ters vekil arkasında** (Render vb.) `TRUST_PROXY=1` ayarlayın; yoksa tüm istekler vekilin IP'sinden gelmiş görünür ve IP sınırı herkesi aynı kişi sayar. Vekil yokken bu değeri 0 bırakın, aksi halde `X-Forwarded-For` taklit edilebilir.
+- Aynı ağdan (ofis, jüri toplantısı) çok kişi bağlanacaksa `RATE_LIMIT_MAX` değerini yükseltin.
+- `/api/health` admin bakiyesi eşiğin altına inince 503 döndüğü için, dışarıdan bir uptime izleyicisi (ör. UptimeRobot) bakiye azalınca e-posta ile uyarabilir.
+- Jüri konsolundaki "Yönetici anahtarı" alanı `DEMO_RESET_TOKEN` ile eşleşmelidir; anahtarı yalnızca jüriyle paylaşacağınız teslim notlarına yazın.
 
 ---
 

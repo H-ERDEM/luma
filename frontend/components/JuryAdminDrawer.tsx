@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { explorerTx } from "@/lib/env";
 import { usdc } from "@/lib/format";
@@ -10,6 +10,7 @@ import { CLOSED_BATCH_MESSAGE, phaseLabel } from "@/lib/txPhase";
 import { PhantomHint } from "@/components/PhantomHint";
 
 const DEMO_QUANTITY = 10;
+const TOKEN_STORAGE_KEY = "luma.resetToken";
 /** Bir adım (backend + Phantom onayı + zincir) bu sürede bitmezse arayüz kilidi açılır. */
 const STEP_TIMEOUT_MS = 180_000;
 
@@ -28,6 +29,23 @@ export function JuryAdminDrawer() {
   const [open, setOpen] = useState(false);
   const [running, setRunning] = useState<number | null>(null);
   const [stage, setStage] = useState<string | null>(null);
+  // Yeni parti başlatmak backend'de yönetici anahtarıyla korunuyor olabilir; yalnızca bu oturumda tutulur.
+  const [resetToken, setResetToken] = useState("");
+  useEffect(() => {
+    try {
+      setResetToken(sessionStorage.getItem(TOKEN_STORAGE_KEY) ?? "");
+    } catch {
+      // Depolama kapalıysa anahtar yalnızca bu sayfa açıkken bellekte kalır.
+    }
+  }, []);
+  const updateResetToken = (value: string) => {
+    setResetToken(value);
+    try {
+      sessionStorage.setItem(TOKEN_STORAGE_KEY, value);
+    } catch {
+      // yok sayılır
+    }
+  };
   // Kapalı parti (Settled/Defaulted) 1-4. adımları çalıştıramaz; önce yeni parti gerekir.
   const closed = state !== null && state.status !== "Active";
   const unavailable = state === null;
@@ -46,15 +64,28 @@ export function JuryAdminDrawer() {
   const steps: Step[] = [
     {
       title: "Fide fonla",
-      detail: `Cüzdanı KYC'den geçirir, 100 test USDC yükler ve ${DEMO_QUANTITY} fide satın alır.`,
+      detail: `Cüzdanı KYC'den geçirir, test USDC bakiyenizi üst sınıra (100) tamamlar ve ${DEMO_QUANTITY} fide satın alır.`,
       run: async () => {
         const wallet = requireWallet();
         await requireActiveBatch();
         setStage("KYC ve test USDC hazırlanıyor…");
         const kyc = await api.verifyKyc(wallet);
-        pushLog({ text: "KYC onaylandı", tone: "ok", signature: kyc.signature });
-        await api.faucet(wallet);
-        pushLog({ text: "100 test USDC yüklendi", tone: "info" });
+        pushLog({
+          text: kyc.alreadyApproved ? "KYC zaten onaylı" : "KYC onaylandı",
+          tone: "ok",
+          signature: kyc.signature ?? undefined,
+        });
+        const faucet = await api.faucet(wallet);
+        pushLog({
+          text:
+            faucet.minted === "0"
+              ? `USDC bakiyeniz zaten üst sınırda (${usdc(faucet.cap)}); yeni USDC yüklenmedi`
+              : `${usdc(faucet.minted)} test USDC yüklendi (bakiye ${usdc(faucet.balance)})`,
+          tone: "info",
+        });
+        if (faucet.solSkipped) {
+          pushLog({ text: "SOL desteği şu an kapalı (yönetici cüzdanında SOL azaldı); işlem ücreti için SOL'unuz yetmeyebilir.", tone: "info" });
+        }
         const sig = await fund(DEMO_QUANTITY);
         pushLog({ text: `${DEMO_QUANTITY} fide satın alındı`, tone: "ok", signature: sig });
       },
@@ -189,12 +220,24 @@ export function JuryAdminDrawer() {
 
           <li className="rounded-xl border border-dashed border-line p-4 text-sm">
             <p className="text-muted">3. ve 4. adımlar partiyi kapatır. Diğer senaryo için yeni bir parti başlatın.</p>
+            <label htmlFor="reset-token" className="mt-3 block text-xs font-medium text-muted">
+              Yönetici anahtarı (yalnızca gerekiyorsa)
+            </label>
+            <input
+              id="reset-token"
+              type="password"
+              autoComplete="off"
+              value={resetToken}
+              onChange={(e) => updateResetToken(e.target.value)}
+              placeholder="Yeni parti için anahtar"
+              className="mt-1 w-full rounded-lg border border-line px-3 py-1.5 text-sm focus:border-ink focus:outline-none"
+            />
             <button
               type="button"
               disabled={running !== null}
               onClick={() =>
                 execute(-1, async () => {
-                  const res = await api.reset();
+                  const res = await api.reset(resetToken.trim() || undefined);
                   pushLog({ text: `Parti #${res.batchId} başlatıldı`, tone: "info" });
                 })
               }

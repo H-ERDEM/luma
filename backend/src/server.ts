@@ -2,9 +2,10 @@ import express, { Request, Response } from "express";
 import cors from "cors";
 import { PublicKey } from "@solana/web3.js";
 import { z } from "zod";
-import { env, maskRpcUrl } from "./config";
+import { env, limits, maskRpcUrl } from "./config";
 import { buildTelemetry, theoreticalCurve } from "./biology";
 import { AppContext, BatchStateSnapshot, describeError } from "./context";
+import { ipRateLimit, WindowCounter } from "./limits";
 import { createSimulatorRouter } from "./simulator";
 
 const walletParam = z.string().refine((v) => {
@@ -45,6 +46,8 @@ function telemetryFeed(ctx: AppContext, state: BatchStateSnapshot) {
 
 export function createApp(ctx: AppContext) {
   const app = express();
+  // Ters vekil (Render vb.) arkasında gerçek istemci IP'si için; 0 iken X-Forwarded-For'a güvenilmez.
+  if (limits.trustProxy > 0) app.set("trust proxy", limits.trustProxy);
   app.use(cors({ origin: env.frontendOrigin }));
   app.use(express.json({ limit: "32kb" }));
 
@@ -54,13 +57,25 @@ export function createApp(ctx: AppContext) {
       try {
         res.json(await task(req));
       } catch (err) {
-        const { status, message, logs } = describeError(err);
+        const { status, message, logs, retryAfterSec } = describeError(err);
+        if (retryAfterSec !== undefined) res.set("Retry-After", String(retryAfterSec));
         res.status(status).json({ error: message, logs });
       }
     };
 
-  app.get("/api/health", (_req, res) => {
-    res.json({ ok: true, rpc: maskRpcUrl(env.rpcUrl) });
+  const rateCounter = new WindowCounter();
+  const mutationLimit = (scope: string) => ipRateLimit(rateCounter, limits.rateLimitMax, limits.rateLimitWindowSec, scope);
+
+  /** Canlılık + admin SOL durumu: admin eşiğin altındaysa 503 (dışarıdan bir uptime izleyicisi uyarı verebilir). */
+  app.get("/api/health", async (_req, res) => {
+    const base = { rpc: maskRpcUrl(env.rpcUrl) };
+    try {
+      const admin = await ctx.adminStatus();
+      res.status(admin.low ? 503 : 200).json({ ok: !admin.low, ...base, adminSol: Math.round(admin.sol * 100) / 100, adminLowSol: admin.low });
+    } catch {
+      // RPC okunamıyor: süreç ayakta, ama admin bakiyesi bilinmiyor.
+      res.json({ ok: true, ...base, adminSol: null, adminLowSol: false, rpcOk: false });
+    }
   });
 
   app.get(
@@ -104,14 +119,19 @@ export function createApp(ctx: AppContext) {
   /** Demo KYC sağlayıcısı: test cüzdanını zincir üstü KycRegistry'de onaylar. */
   app.post(
     "/api/kyc/verify",
+    mutationLimit("kyc"),
     handle(async (req) => {
       const { wallet } = z.object({ wallet: walletParam }).parse(req.body);
+      // Zaten onaylıysa zincire yazma: her yazma admin SOL'u harcar.
+      if ((await ctx.client.kycStatus(new PublicKey(wallet))).approved) {
+        return { wallet, approved: true, signature: null, alreadyApproved: true };
+      }
       const signature = await ctx.mutex.run(() => ctx.client.setKyc(new PublicKey(wallet), true));
       return { wallet, approved: true, signature };
     }),
   );
 
-  app.use("/demo", createSimulatorRouter(ctx));
+  app.use("/demo", mutationLimit("demo"), createSimulatorRouter(ctx));
   return app;
 }
 

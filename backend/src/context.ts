@@ -1,5 +1,6 @@
 import { PublicKey } from "@solana/web3.js";
-import { BATCH_ECONOMICS, DEMO, redactSecrets } from "./config";
+import { BATCH_ECONOMICS, DEMO, limits, redactSecrets } from "./config";
+import { FaucetGuard, LimitError } from "./limits";
 import { LumaClient, OracleMode } from "./chain";
 import { buildTelemetry } from "./biology";
 import { loadProtocolKeys } from "./keys";
@@ -10,9 +11,17 @@ export class HttpError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    readonly retryAfterSec?: number,
   ) {
     super(message);
   }
+}
+
+export interface AdminStatus {
+  lamports: number;
+  sol: number;
+  low: boolean;
+  critical: boolean;
 }
 
 export type BatchStateSnapshot = Awaited<ReturnType<LumaClient["batchState"]>>;
@@ -25,6 +34,33 @@ export class AppContext {
   readonly client = LumaClient.create(loadProtocolKeys());
   readonly store = new StateStore();
   readonly mutex = new Mutex();
+
+  /** Faucet için cüzdan başına bekleme ve küresel günlük bütçe (bellekte). */
+  readonly faucetGuard = new FaucetGuard({
+    walletMaxPerDay: limits.faucetWalletMaxPerDay,
+    dailyBudgetUsdc: limits.faucetDailyBudgetUsdc,
+    dailyBudgetLamports: limits.faucetDailyBudgetLamports,
+  });
+
+  private adminCache: { at: number; value: Promise<AdminStatus> } | null = null;
+
+  /** Admin cüzdanının SOL durumu (15 sn önbellek). `low`: SOL desteği kapalı; `critical`: faucet tamamen kapalı. */
+  adminStatus(opts: { fresh?: boolean } = {}): Promise<AdminStatus> {
+    const now = Date.now();
+    if (opts.fresh !== true && this.adminCache !== null && now - this.adminCache.at < 15_000) return this.adminCache.value;
+    const value = this.client.lamportsOf(this.client.admin).then((lamports) => ({
+      lamports,
+      sol: lamports / 1_000_000_000,
+      low: lamports < limits.adminMinLamports,
+      critical: lamports < limits.adminHardMinLamports,
+    }));
+    const entry = { at: now, value };
+    this.adminCache = entry;
+    value.catch(() => {
+      if (this.adminCache === entry) this.adminCache = null;
+    });
+    return value;
+  }
 
   private stateCache: { key: string; at: number; promise: Promise<BatchStateSnapshot> } | null = null;
 
@@ -143,8 +179,10 @@ export class AppContext {
   }
 }
 
-export function describeError(err: unknown): { status: number; message: string; logs?: string[] } {
-  if (err instanceof HttpError) return { status: err.status, message: redactSecrets(err.message) };
+export function describeError(err: unknown): { status: number; message: string; logs?: string[]; retryAfterSec?: number } {
+  if (err instanceof HttpError || err instanceof LimitError) {
+    return { status: err.status, message: redactSecrets(err.message), retryAfterSec: err.retryAfterSec };
+  }
   const e = err as { error?: { errorMessage?: string }; message?: string; logs?: string[] };
   return {
     status: 500,

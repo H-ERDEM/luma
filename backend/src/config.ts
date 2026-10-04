@@ -47,6 +47,36 @@ export function redactSecrets(text: string): string {
     .replace(/(api[-_]?key=)[^&\s"')]+/gi, "$1***");
 }
 
+function numberEnv(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (raw === undefined || raw.trim() === "") return fallback;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value < 0) throw new Error(`Ortam değişkeni ${name} geçerli bir sayı olmalı (>= 0): "${raw}"`);
+  return value;
+}
+
+/** Demo uç noktalarının kötüye kullanıma karşı sınırları. Hepsi ortam değişkeniyle ayarlanır. */
+export const limits = {
+  /** Cüzdan başına test USDC üst sınırı: faucet yalnızca bu seviyeye kadar tamamlar. */
+  faucetUsdcCap: BigInt(Math.round(numberEnv("FAUCET_USDC_CAP", 100) * 1_000_000)),
+  /** Bir cüzdanın 24 saatte USDC alabileceği en fazla sayı (yalnızca gerçekten basılan çağrılar sayılır). */
+  faucetWalletMaxPerDay: numberEnv("FAUCET_WALLET_MAX_PER_DAY", 5),
+  /** Günlük (UTC) toplam dağıtım tavanları. */
+  faucetDailyBudgetUsdc: Math.round(numberEnv("FAUCET_DAILY_BUDGET_USDC", 5_000) * 1_000_000),
+  faucetDailyBudgetLamports: Math.round(numberEnv("FAUCET_DAILY_BUDGET_SOL", 2) * 1_000_000_000),
+  /** Admin bakiyesi bunun altına inerse SOL desteği kapanır ve /api/health 503 döner. */
+  adminMinLamports: Math.round(numberEnv("ADMIN_MIN_SOL", 3) * 1_000_000_000),
+  /** Bunun altında faucet tamamen durur (işlem ücretlerini karşılayabilmek için). */
+  adminHardMinLamports: 100_000_000,
+  /** IP başına, pencere içinde en fazla istek (/api/kyc/verify ve /demo/*). */
+  rateLimitMax: numberEnv("RATE_LIMIT_MAX", 60),
+  rateLimitWindowSec: numberEnv("RATE_LIMIT_WINDOW_SEC", 60),
+  /** Ters vekil (Render vb.) arkasındaki atlama sayısı; 0 = vekil yok, X-Forwarded-For'a güvenilmez. */
+  trustProxy: numberEnv("TRUST_PROXY", 0),
+  /** Doluysa /demo/reset için x-demo-token başlığı gerekir. */
+  demoResetToken: (process.env.DEMO_RESET_TOKEN ?? "").trim(),
+} as const;
+
 /** Parti ekonomisi: tüm parasal değerler mikro-USDC (6 ondalık). */
 export const BATCH_ECONOMICS = {
   unitPrice: 450_000n,
@@ -60,7 +90,6 @@ export const BATCH_ECONOMICS = {
 } as const;
 
 export const DEMO = {
-  faucetUsdc: 100_000_000n,
   faucetMinLamports: 50_000_000,
   telemetryStepDays: 5,
   usdcDecimals: 6,
