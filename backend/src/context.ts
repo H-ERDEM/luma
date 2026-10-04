@@ -1,11 +1,11 @@
 import { PublicKey } from "@solana/web3.js";
-import { BATCH_ECONOMICS, DEMO, limits, redactSecrets } from "./config";
+import { BATCH_ECONOMICS, DEMO, env, limits, redactSecrets } from "./config";
 import { FaucetGuard, LimitError } from "./limits";
 import { LumaClient, OracleMode } from "./chain";
 import { buildTelemetry } from "./biology";
 import { loadProtocolKeys } from "./keys";
 import { BatchAddresses } from "./protocol";
-import { Mutex, StateStore, TelemetrySnapshot } from "./store";
+import { Mutex, TelemetrySnapshot } from "./store";
 
 export class HttpError extends Error {
   constructor(
@@ -26,14 +26,23 @@ export interface AdminStatus {
 
 export type BatchStateSnapshot = Awaited<ReturnType<LumaClient["batchState"]>>;
 
+/** Bellekte tutulan ve zincirden yeniden kurulan telemetri kaydı sayısı (arayüz son 6'yı gösterir). */
+const HISTORY_LIMIT = 10;
+
 /** Zincir durumu bu süre boyunca önbellekten verilir; tüm izleyiciler tek RPC turunu paylaşır. */
 const STATE_TTL_MS = 2_500;
 
 /** Sunucu ve simülatörün paylaştığı uygulama durumu. */
 export class AppContext {
   readonly client = LumaClient.create(loadProtocolKeys());
-  readonly store = new StateStore();
   readonly mutex = new Mutex();
+
+  // --- Zincirden çözülen durum: diskte hiçbir şey tutulmaz (sunucu yeniden başlayınca kaybolmaz). ---
+  private usdcMintKey: PublicKey | null = null;
+  private activeBatchId: bigint | null = null;
+  private readonly history = new Map<string, TelemetrySnapshot[]>();
+  private loaded = false;
+  private loading: Promise<void> | null = null;
 
   /** Faucet için cüzdan başına bekleme ve küresel günlük bütçe (bellekte). */
   readonly faucetGuard = new FaucetGuard({
@@ -85,39 +94,109 @@ export class AppContext {
     this.stateCache = null;
   }
 
-  usdcMint(): PublicKey {
-    if (this.store.usdcMint === null) {
-      throw new HttpError(503, "Mock USDC mint'i yok. Önce 'npm run bootstrap' çalıştırın.");
+  /**
+   * İlk istekten önce zincirden okunur: USDC mint'i `ProtocolConfig`'ten, aktif parti en yeni
+   * "hazır" partiden, telemetri geçmişi son işlemlerden. Başarısız olursa (RPC hatası) sonraki
+   * istek yeniden dener. Henüz bootstrap yapılmadıysa (config yok) yüklenmiş sayılmaz.
+   */
+  ensureReady(): Promise<void> {
+    if (this.loaded) return Promise.resolve();
+    if (this.loading === null) {
+      const attempt = this.loadFromChain().finally(() => {
+        if (this.loading === attempt) this.loading = null;
+      });
+      this.loading = attempt;
     }
-    return new PublicKey(this.store.usdcMint);
+    return this.loading;
+  }
+
+  private async loadFromChain(): Promise<void> {
+    if (!(await this.client.configExists())) return; // bootstrap öncesi
+    const config = await this.client.fetchConfig();
+    this.usdcMintKey = config.usdcMint as PublicKey;
+    this.activeBatchId = await this.resolveActiveBatch(Number(config.batchCount.toString()));
+    if (this.activeBatchId !== null) {
+      const a = this.client.batchAddresses(this.activeBatchId, this.usdcMintKey);
+      this.history.set(this.activeBatchId.toString(), await this.client.recentTelemetry(a, HISTORY_LIMIT));
+    }
+    this.loaded = true;
+  }
+
+  /** En yeni "hazır" parti: sondan geriye bakılır, yarıda kalmış (yetim) partiler atlanır. */
+  private async resolveActiveBatch(batchCount: number): Promise<bigint | null> {
+    if (env.activeBatchOverride !== null) return BigInt(env.activeBatchOverride);
+    for (let id = batchCount - 1; id >= Math.max(0, batchCount - 10); id--) {
+      if (await this.client.isBatchReady(this.client.batchAddresses(BigInt(id), this.usdcMintKey!))) return BigInt(id);
+    }
+    return null;
+  }
+
+  /** Zinciri baştan okutur (bootstrap sonrası). */
+  async reloadFromChain(): Promise<void> {
+    this.loaded = false;
+    this.loading = null;
+    await this.ensureReady();
+  }
+
+  /**
+   * Başlangıçta: yüklenen anahtarlar zincirdeki ProtocolConfig ile uyuşmuyorsa üretimde başlamayı
+   * reddeder (her dağıtımda yeni anahtar üretilmesi gibi hatalar sessizce oracle'ı bozardı).
+   * RPC okunamıyorsa başlamayı engellemez, uyarı verir.
+   */
+  async verifyKeys(): Promise<void> {
+    let config: Record<string, PublicKey>;
+    try {
+      if (!(await this.client.configExists())) return;
+      config = (await this.client.fetchConfig()) as Record<string, PublicKey>;
+    } catch (err) {
+      console.warn(`Anahtarlar zincirdeki config ile doğrulanamadı (RPC): ${describeError(err).message}`);
+      return;
+    }
+    const problems = [
+      !config.admin.equals(this.client.admin) && "ADMIN_KEYPAIR_JSON zincirdeki admin ile uyuşmuyor",
+      !config.donAuthority.equals(this.client.keys.don.publicKey) && "DON_KEYPAIR_JSON zincirdeki donAuthority ile uyuşmuyor",
+      !config.fallbackAuthority.equals(this.client.keys.fallback.publicKey) && "FALLBACK_KEYPAIR_JSON zincirdeki fallbackAuthority ile uyuşmuyor",
+    ].filter((p): p is string => typeof p === "string");
+    if (problems.length === 0) return;
+    const text = `Anahtar uyuşmazlığı: ${problems.join("; ")}.`;
+    if (env.production) throw new Error(text);
+    console.warn(text);
+  }
+
+  usdcMint(): PublicKey {
+    if (this.usdcMintKey === null) {
+      throw new HttpError(503, "Protokol henüz kurulmamış. Yerel makinenizde 'npm run bootstrap' çalıştırın.");
+    }
+    return this.usdcMintKey;
   }
 
   activeBatch(): BatchAddresses {
-    const id = this.store.activeBatchId;
-    if (id === null) {
-      throw new HttpError(503, "Aktif parti yok. 'npm run bootstrap' veya POST /demo/reset çalıştırın.");
+    if (this.activeBatchId === null) {
+      throw new HttpError(503, "Hazır parti yok. 'npm run bootstrap' veya POST /demo/reset çalıştırın.");
     }
-    return this.client.batchAddresses(id, this.usdcMint());
+    return this.client.batchAddresses(this.activeBatchId, this.usdcMint());
   }
 
-  /** Mock USDC + protokol yapılandırması + ilk parti; tekrar çalıştırılması güvenlidir. */
+  /** Aktif partinin son telemetri kayıtları (en eskiden yeniye). */
+  telemetryHistory(batchId: bigint): TelemetrySnapshot[] {
+    return this.history.get(batchId.toString()) ?? [];
+  }
+
+  /** Mock USDC + protokol yapılandırması + ilk parti; tekrar çalıştırılması güvenlidir. Durum zincirden okunur. */
   async bootstrap(): Promise<BatchAddresses> {
-    if (this.store.usdcMint === null) {
-      const mint = await this.client.createMockUsdc();
-      this.store.setUsdcMint(mint.toBase58());
-    }
     if (!(await this.client.configExists())) {
-      await this.client.initializeConfig(this.usdcMint());
+      const mint = await this.client.createMockUsdc();
+      await this.client.initializeConfig(mint);
     }
-    if (this.store.activeBatchId === null) {
-      return this.startNewBatch();
-    }
+    await this.reloadFromChain();
+    if (this.activeBatchId === null) return this.startNewBatch();
     return this.activeBatch();
   }
 
   async startNewBatch(): Promise<BatchAddresses> {
     const a = await this.client.createBatch(this.usdcMint());
-    this.store.setActiveBatch(a.batchId);
+    this.activeBatchId = a.batchId;
+    this.history.set(a.batchId.toString(), []);
     await this.pushDay(a, 0, "don", false);
     return a;
   }
@@ -144,7 +223,8 @@ export class AppContext {
       source: mode === "don" ? "ChainlinkDon" : "AuthorityEd25519",
       signature,
     };
-    this.store.appendHistory(a.batchId, snapshot);
+    const key = a.batchId.toString();
+    this.history.set(key, [...(this.history.get(key) ?? []), snapshot].slice(-HISTORY_LIMIT));
     return snapshot;
   }
 

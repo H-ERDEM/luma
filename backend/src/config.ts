@@ -1,4 +1,5 @@
 import dotenv from "dotenv";
+import fs from "fs";
 import os from "os";
 import path from "path";
 
@@ -17,14 +18,32 @@ function required(name: string, fallback: string): string {
   return value;
 }
 
-const backendRoot = path.resolve(__dirname, "..");
+/**
+ * backend/ klasörü: package.json'u içeren ilk üst dizin. `__dirname` TS kaynağında `backend/src`,
+ * derlenmiş çıktıda `backend/dist/src` olduğu için sabit bir `..` her iki durumda da doğru olmaz.
+ */
+function findBackendRoot(): string {
+  let dir = __dirname;
+  for (let i = 0; i < 6; i++) {
+    if (fs.existsSync(path.join(dir, "package.json"))) return dir;
+    dir = path.dirname(dir);
+  }
+  throw new Error("backend klasörü bulunamadı (package.json yok)");
+}
+
+const backendRoot = findBackendRoot();
 
 export const env = {
   rpcUrl: required("RPC_URL", "http://127.0.0.1:8899"),
   adminKeypairPath: path.resolve(backendRoot, expandHome(required("ADMIN_KEYPAIR_PATH", "~/.config/solana/id.json"))),
-  idlDir: path.resolve(backendRoot, required("IDL_DIR", "../target/idl")),
+  /** NODE_ENV=production: anahtarlar yalnızca ortam değişkeninden gelir, dosyaya hiçbir şey yazılmaz/üretilmez. */
+  production: process.env.NODE_ENV === "production",
+  /** Depodaki IDL kopyaları (`npm run sync-idl`); geliştirmede IDL_DIR=../target/idl ile taze derlemeye yönlendirilebilir. */
+  idlDir: path.resolve(backendRoot, required("IDL_DIR", "./idl")),
+  /** Yalnızca geliştirme: DON/fallback anahtarlarının otomatik üretilip yazıldığı klasör. */
   keysDir: path.resolve(backendRoot, required("KEYS_DIR", "./.keys")),
-  dataDir: path.resolve(backendRoot, required("DATA_DIR", "./.data")),
+  /** Elle belirlenirse aktif parti zincirden çözülmez, bu numara kullanılır. */
+  activeBatchOverride: process.env.ACTIVE_BATCH_ID?.trim() ? process.env.ACTIVE_BATCH_ID.trim() : null,
   port: Number(required("PORT", "4000")),
   frontendOrigin: required("FRONTEND_ORIGIN", "http://localhost:3000"),
 } as const;
