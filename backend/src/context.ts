@@ -1,0 +1,126 @@
+import { PublicKey } from "@solana/web3.js";
+import { BATCH_ECONOMICS, DEMO } from "./config";
+import { LumaClient, OracleMode } from "./chain";
+import { buildTelemetry } from "./biology";
+import { loadProtocolKeys } from "./keys";
+import { BatchAddresses } from "./protocol";
+import { Mutex, StateStore, TelemetrySnapshot } from "./store";
+
+export class HttpError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+/** Sunucu ve simülatörün paylaştığı uygulama durumu. */
+export class AppContext {
+  readonly client = LumaClient.create(loadProtocolKeys());
+  readonly store = new StateStore();
+  readonly mutex = new Mutex();
+
+  usdcMint(): PublicKey {
+    if (this.store.usdcMint === null) {
+      throw new HttpError(503, "Mock USDC mint'i yok. Önce 'npm run bootstrap' çalıştırın.");
+    }
+    return new PublicKey(this.store.usdcMint);
+  }
+
+  activeBatch(): BatchAddresses {
+    const id = this.store.activeBatchId;
+    if (id === null) {
+      throw new HttpError(503, "Aktif parti yok. 'npm run bootstrap' veya POST /demo/reset çalıştırın.");
+    }
+    return this.client.batchAddresses(id, this.usdcMint());
+  }
+
+  /** Mock USDC + protokol yapılandırması + ilk parti; tekrar çalıştırılması güvenlidir. */
+  async bootstrap(): Promise<BatchAddresses> {
+    if (this.store.usdcMint === null) {
+      const mint = await this.client.createMockUsdc();
+      this.store.setUsdcMint(mint.toBase58());
+    }
+    if (!(await this.client.configExists())) {
+      await this.client.initializeConfig(this.usdcMint());
+    }
+    if (this.store.activeBatchId === null) {
+      return this.startNewBatch();
+    }
+    return this.activeBatch();
+  }
+
+  async startNewBatch(): Promise<BatchAddresses> {
+    const a = await this.client.createBatch(this.usdcMint());
+    this.store.setActiveBatch(a.batchId);
+    await this.pushDay(a, 0, "don", false);
+    return a;
+  }
+
+  /** Belirtilen gün için telemetri üretir, oracle yoluyla zincire yazar ve geçmişe ekler. */
+  async pushDay(a: BatchAddresses, day: number, mode: OracleMode, outage: boolean): Promise<TelemetrySnapshot> {
+    const before = await this.client.fetchBatch(a);
+    const sequence = BigInt(before.telemetry.sequence.toString()) + 1n;
+    const observedAt = await this.client.chainTime();
+    const telemetry = buildTelemetry(day, sequence, observedAt, { outage, jitterSeed: Number(sequence) * 7 + day });
+    const signature = await this.client.pushTelemetry(a, telemetry, mode);
+    const after = await this.client.fetchBatch(a);
+    const snapshot: TelemetrySnapshot = {
+      sequence: sequence.toString(),
+      day,
+      observedAt: observedAt.toString(),
+      growthFactorBps: telemetry.growthFactorBps,
+      waterTempCentiC: telemetry.waterTempCentiC,
+      flowRateMlMin: telemetry.flowRateMlMin,
+      ecMicroSCm: telemetry.ecMicroSCm,
+      phCenti: telemetry.phCenti,
+      fairValue: after.fairValue.toString(),
+      curvePrice: after.curvePrice.toString(),
+      source: mode === "don" ? "ChainlinkDon" : "AuthorityEd25519",
+      signature,
+    };
+    this.store.appendHistory(a.batchId, snapshot);
+    return snapshot;
+  }
+
+  async requireActiveStatus(a: BatchAddresses): Promise<{ day: number }> {
+    const batch = await this.client.fetchBatch(a);
+    if (!("active" in batch.status)) {
+      throw new HttpError(409, "Parti artık aktif değil. Yeni demo için POST /demo/reset kullanın.");
+    }
+    return { day: Number(batch.telemetry.day) };
+  }
+
+  /** Hedef güne kadar `telemetryStepDays` aralıklarla, DON ve Ed25519 yollarını dönüşümlü kullanarak ilerler. */
+  async advanceTo(targetDay: number): Promise<TelemetrySnapshot[]> {
+    const a = this.activeBatch();
+    const { day } = await this.requireActiveStatus(a);
+    if (targetDay <= day) {
+      throw new HttpError(400, `Hedef gün (${targetDay}) mevcut günden (${day}) büyük olmalı.`);
+    }
+    if (targetDay > BATCH_ECONOMICS.harvestDay) {
+      throw new HttpError(400, `Hedef gün hasat gününü (${BATCH_ECONOMICS.harvestDay}) aşamaz.`);
+    }
+    const step = DEMO.telemetryStepDays;
+    const days: number[] = [];
+    for (let d = Math.floor(day / step) * step + step; d < targetDay; d += step) days.push(d);
+    days.push(targetDay);
+
+    const pushed: TelemetrySnapshot[] = [];
+    for (const [i, d] of days.entries()) {
+      pushed.push(await this.pushDay(a, d, i % 2 === 0 ? "don" : "ed25519", false));
+    }
+    return pushed;
+  }
+}
+
+export function describeError(err: unknown): { status: number; message: string; logs?: string[] } {
+  if (err instanceof HttpError) return { status: err.status, message: err.message };
+  const e = err as { error?: { errorMessage?: string }; message?: string; logs?: string[] };
+  return {
+    status: 500,
+    message: e.error?.errorMessage ?? e.message ?? "Bilinmeyen hata",
+    logs: e.logs,
+  };
+}

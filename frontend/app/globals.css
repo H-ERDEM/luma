@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-paper font-sans text-ink antialiased;
+  font-feature-settings: "tnum" 0;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid #2c6e8a;
+  outline-offset: 2px;
+}
+
+.wallet-adapter-button-trigger {
+  background-color: #17231d !important;
+  border-radius: 9999px !important;
+  height: 40px !important;
+  font-family: var(--font-body) !important;
+}
