@@ -40,8 +40,12 @@ export function KycBadge() {
     if (!publicKey) return;
     setPending(true);
     try {
-      const { signature } = await api.verifyKyc(publicKey.toBase58());
-      pushLog({ text: "KYC kaydı zincirde onaylandı", tone: "ok", signature });
+      const { signature, alreadyApproved } = await api.verifyKyc(publicKey.toBase58());
+      pushLog({
+        text: alreadyApproved ? "KYC kaydınız zaten onaylı" : "KYC kaydı zincirde onaylandı",
+        tone: "ok",
+        signature: signature ?? undefined,
+      });
       await refresh();
     } catch (err) {
       pushLog({ text: `KYC doğrulanamadı: ${errorText(err)}`, tone: "error" });

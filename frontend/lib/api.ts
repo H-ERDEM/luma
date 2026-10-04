@@ -109,8 +109,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return body;
 }
 
-const post = <T>(path: string, body: unknown = {}) =>
-  request<T>(path, { method: "POST", body: JSON.stringify(body) });
+const post = <T>(path: string, body: unknown = {}, headers?: Record<string, string>) =>
+  request<T>(path, { method: "POST", body: JSON.stringify(body), headers });
 
 export const api = {
   idl: (name: "luma_batch" | "luma_transfer_hook") => request<Idl>(`/api/idl/${name}`),
@@ -121,10 +121,19 @@ export const api = {
     request<{ state: BatchState; feed: TelemetryFeed }>(`/api/snapshot${fresh ? "?fresh=1" : ""}`),
   telemetry: () => request<TelemetryFeed>("/api/telemetry/current"),
   kyc: (wallet: string) => request<KycStatus>(`/api/kyc/${wallet}`),
-  verifyKyc: (wallet: string) => post<{ signature: string }>("/api/kyc/verify", { wallet }),
-  faucet: (wallet: string) => post<{ minted: string; usdcAccount: string }>("/demo/faucet", { wallet }),
+  /** `signature` boştur ve `alreadyApproved` doludur: cüzdan zaten onaylıydı, zincire yazılmadı. */
+  verifyKyc: (wallet: string) =>
+    post<{ signature: string | null; alreadyApproved?: boolean }>("/api/kyc/verify", { wallet }),
+  /** Cüzdanın USDC bakiyesini `cap`e tamamlar: `minted` yalnızca eksik kısımdır ("0" olabilir). */
+  faucet: (wallet: string) =>
+    post<{ minted: string; balance: string; cap: string; usdcAccount: string; solSignature: string | null; solSkipped: boolean }>(
+      "/demo/faucet",
+      { wallet },
+    ),
   advanceDays: (targetDay: number) => post<{ pushed: TelemetrySnapshot[] }>("/demo/advance-days", { targetDay }),
   triggerOutage: () => post<{ signature: string; refundPrice: string }>("/demo/trigger-outage"),
   settleHarvest: () => post<{ signature: string; otcAmount: string; redemptionPrice: string }>("/demo/settle-harvest"),
-  reset: () => post<{ batchId: string }>("/demo/reset"),
+  /** `token`: backend DEMO_RESET_TOKEN ile korunuyorsa yönetici anahtarı (x-demo-token). */
+  reset: (token?: string) =>
+    post<{ batchId: string }>("/demo/reset", {}, token ? { "x-demo-token": token } : undefined),
 };
