@@ -2,7 +2,7 @@ import express, { Request, Response } from "express";
 import cors from "cors";
 import { PublicKey } from "@solana/web3.js";
 import { z } from "zod";
-import { env } from "./config";
+import { env, maskRpcUrl } from "./config";
 import { buildTelemetry, theoreticalCurve } from "./biology";
 import { AppContext, BatchStateSnapshot, describeError } from "./context";
 import { createSimulatorRouter } from "./simulator";
@@ -60,7 +60,7 @@ export function createApp(ctx: AppContext) {
     };
 
   app.get("/api/health", (_req, res) => {
-    res.json({ ok: true, rpc: env.rpcUrl });
+    res.json({ ok: true, rpc: maskRpcUrl(env.rpcUrl) });
   });
 
   app.get(
@@ -118,6 +118,6 @@ export function createApp(ctx: AppContext) {
 if (require.main === module) {
   const ctx = new AppContext();
   createApp(ctx).listen(env.port, () => {
-    console.log(`LUMA backend http://localhost:${env.port} (RPC: ${env.rpcUrl})`);
+    console.log(`LUMA backend http://localhost:${env.port} (RPC: ${maskRpcUrl(env.rpcUrl)})`);
   });
 }

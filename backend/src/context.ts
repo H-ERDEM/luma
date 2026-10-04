@@ -1,5 +1,5 @@
 import { PublicKey } from "@solana/web3.js";
-import { BATCH_ECONOMICS, DEMO } from "./config";
+import { BATCH_ECONOMICS, DEMO, redactSecrets } from "./config";
 import { LumaClient, OracleMode } from "./chain";
 import { buildTelemetry } from "./biology";
 import { loadProtocolKeys } from "./keys";
@@ -144,11 +144,11 @@ export class AppContext {
 }
 
 export function describeError(err: unknown): { status: number; message: string; logs?: string[] } {
-  if (err instanceof HttpError) return { status: err.status, message: err.message };
+  if (err instanceof HttpError) return { status: err.status, message: redactSecrets(err.message) };
   const e = err as { error?: { errorMessage?: string }; message?: string; logs?: string[] };
   return {
     status: 500,
-    message: e.error?.errorMessage ?? e.message ?? "Bilinmeyen hata",
-    logs: e.logs,
+    message: redactSecrets(e.error?.errorMessage ?? e.message ?? "Bilinmeyen hata"),
+    logs: e.logs?.map(redactSecrets),
   };
 }

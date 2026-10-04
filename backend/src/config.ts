@@ -29,6 +29,24 @@ export const env = {
   frontendOrigin: required("FRONTEND_ORIGIN", "http://localhost:3000"),
 } as const;
 
+/** RPC adresini yanıtlara/loglara koymadan önce gizler (anahtar yolda ya da sorguda olabilir). */
+export function maskRpcUrl(raw: string): string {
+  try {
+    const u = new URL(raw);
+    return u.origin + (u.pathname !== "/" ? "/***" : "") + (u.search !== "" ? "?***" : "");
+  } catch {
+    return "***";
+  }
+}
+
+/** Hata metinlerinden RPC adresini ve api-key benzeri değerleri temizler. */
+export function redactSecrets(text: string): string {
+  return text
+    .split(env.rpcUrl)
+    .join(maskRpcUrl(env.rpcUrl))
+    .replace(/(api[-_]?key=)[^&\s"')]+/gi, "$1***");
+}
+
 /** Parti ekonomisi: tüm parasal değerler mikro-USDC (6 ondalık). */
 export const BATCH_ECONOMICS = {
   unitPrice: 450_000n,
