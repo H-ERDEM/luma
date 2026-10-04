@@ -98,11 +98,10 @@ export interface KycStatus {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BACKEND_URL}${path}`, {
-    ...init,
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
-    cache: "no-store",
-  });
+  // Gövdesiz (GET) isteklerde Content-Type göndermeyiz: aksi halde tarayıcı her istekten önce
+  // bir CORS ön isteği (OPTIONS) yapar ve HTTP trafiği ikiye katlanır.
+  const headers = init?.body !== undefined ? { "Content-Type": "application/json", ...(init.headers ?? {}) } : init?.headers;
+  const res = await fetch(`${BACKEND_URL}${path}`, { ...init, headers, cache: "no-store" });
   const body = (await res.json()) as T & { error?: string };
   if (!res.ok) {
     throw new Error(body.error ?? `İstek başarısız (${res.status})`);

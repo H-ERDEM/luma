@@ -169,6 +169,10 @@ export function LumaProvider({ children }: { children: ReactNode }) {
   // Cüzdan bağlanınca/değişince KYC ve bakiyeleri hemen oku.
   const walletKey = wallet?.publicKey.toBase58() ?? null;
   useEffect(() => {
+    if (walletKey === null) {
+      void refreshKyc(); // yalnızca KYC'yi temizler; durumu yoklama zaten yüklüyor
+      return;
+    }
     void (async () => {
       await refreshKyc();
       await loadOnce(false);
