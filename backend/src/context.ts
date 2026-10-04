@@ -1,5 +1,5 @@
 import { PublicKey } from "@solana/web3.js";
-import { BATCH_ECONOMICS, DEMO } from "./config";
+import { BATCH_ECONOMICS, DEMO, redactSecrets } from "./config";
 import { LumaClient, OracleMode } from "./chain";
 import { buildTelemetry } from "./biology";
 import { loadProtocolKeys } from "./keys";
@@ -15,11 +15,39 @@ export class HttpError extends Error {
   }
 }
 
+export type BatchStateSnapshot = Awaited<ReturnType<LumaClient["batchState"]>>;
+
+/** Zincir durumu bu süre boyunca önbellekten verilir; tüm izleyiciler tek RPC turunu paylaşır. */
+const STATE_TTL_MS = 2_500;
+
 /** Sunucu ve simülatörün paylaştığı uygulama durumu. */
 export class AppContext {
   readonly client = LumaClient.create(loadProtocolKeys());
   readonly store = new StateStore();
   readonly mutex = new Mutex();
+
+  private stateCache: { key: string; at: number; promise: Promise<BatchStateSnapshot> } | null = null;
+
+  /** Aktif partinin durumu: kısa süreli önbellek + eşzamanlı isteklerin birleştirilmesi. */
+  batchState(opts: { fresh?: boolean } = {}): Promise<BatchStateSnapshot> {
+    const a = this.activeBatch();
+    const key = a.batchVault.toBase58();
+    const now = Date.now();
+    if (opts.fresh !== true && this.stateCache !== null && this.stateCache.key === key && now - this.stateCache.at < STATE_TTL_MS) {
+      return this.stateCache.promise;
+    }
+    const entry = { key, at: now, promise: this.client.batchState(a, this.usdcMint()) };
+    this.stateCache = entry;
+    entry.promise.catch(() => {
+      if (this.stateCache === entry) this.stateCache = null;
+    });
+    return entry.promise;
+  }
+
+  /** Zinciri değiştiren her işlemden sonra çağrılır. */
+  invalidateState(): void {
+    this.stateCache = null;
+  }
 
   usdcMint(): PublicKey {
     if (this.store.usdcMint === null) {
@@ -116,11 +144,11 @@ export class AppContext {
 }
 
 export function describeError(err: unknown): { status: number; message: string; logs?: string[] } {
-  if (err instanceof HttpError) return { status: err.status, message: err.message };
+  if (err instanceof HttpError) return { status: err.status, message: redactSecrets(err.message) };
   const e = err as { error?: { errorMessage?: string }; message?: string; logs?: string[] };
   return {
     status: 500,
-    message: e.error?.errorMessage ?? e.message ?? "Bilinmeyen hata",
-    logs: e.logs,
+    message: redactSecrets(e.error?.errorMessage ?? e.message ?? "Bilinmeyen hata"),
+    logs: e.logs?.map(redactSecrets),
   };
 }

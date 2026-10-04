@@ -4,6 +4,7 @@
  */
 import fs from "fs";
 import path from "path";
+import { createRetryingFetch } from "./rpcFetch";
 import { AnchorProvider, Idl, Program, Wallet } from "@coral-xyz/anchor";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -76,7 +77,15 @@ export class LumaClient {
   }
 
   static create(keys: ProtocolKeys): LumaClient {
-    return new LumaClient(new Connection(env.rpcUrl, "confirmed"), keys);
+    // 429/503'te kendi geri çekilmemiz devrede; web3.js'in yerleşik yeniden denemesi kapatılır (üst üste binmesin).
+    const retryingFetch = createRetryingFetch({
+      onRetry: ({ status, attempt, maxRetries, delayMs }) =>
+        console.warn(`RPC ${status}, ${delayMs} ms sonra yeniden deneniyor (${attempt}/${maxRetries})`),
+    });
+    return new LumaClient(
+      new Connection(env.rpcUrl, { commitment: "confirmed", fetch: retryingFetch, disableRetryOnRateLimit: true }),
+      keys,
+    );
   }
 
   get admin(): PublicKey {

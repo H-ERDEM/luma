@@ -33,6 +33,9 @@ export function createSimulatorRouter(ctx: AppContext): Router {
       } catch (err) {
         const { status, message, logs } = describeError(err);
         res.status(status).json({ error: message, logs });
+      } finally {
+        // Bu uç noktalar zinciri değiştirir (başarısız olsa bile kısmen yazmış olabilir).
+        ctx.invalidateState();
       }
     };
 

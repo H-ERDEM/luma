@@ -98,11 +98,10 @@ export interface KycStatus {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BACKEND_URL}${path}`, {
-    ...init,
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
-    cache: "no-store",
-  });
+  // Gövdesiz (GET) isteklerde Content-Type göndermeyiz: aksi halde tarayıcı her istekten önce
+  // bir CORS ön isteği (OPTIONS) yapar ve HTTP trafiği ikiye katlanır.
+  const headers = init?.body !== undefined ? { "Content-Type": "application/json", ...(init.headers ?? {}) } : init?.headers;
+  const res = await fetch(`${BACKEND_URL}${path}`, { ...init, headers, cache: "no-store" });
   const body = (await res.json()) as T & { error?: string };
   if (!res.ok) {
     throw new Error(body.error ?? `İstek başarısız (${res.status})`);
@@ -115,7 +114,11 @@ const post = <T>(path: string, body: unknown = {}) =>
 
 export const api = {
   idl: (name: "luma_batch" | "luma_transfer_hook") => request<Idl>(`/api/idl/${name}`),
-  batchState: () => request<BatchState>("/api/batch/state"),
+  /** `fresh`: backend önbelleğini atlar (kendi işleminizden hemen sonra). */
+  batchState: (fresh = false) => request<BatchState>(`/api/batch/state${fresh ? "?fresh=1" : ""}`),
+  /** Durum + telemetri tek istekte (yoklama bunu kullanır). */
+  snapshot: (fresh = false) =>
+    request<{ state: BatchState; feed: TelemetryFeed }>(`/api/snapshot${fresh ? "?fresh=1" : ""}`),
   telemetry: () => request<TelemetryFeed>("/api/telemetry/current"),
   kyc: (wallet: string) => request<KycStatus>(`/api/kyc/${wallet}`),
   verifyKyc: (wallet: string) => post<{ signature: string }>("/api/kyc/verify", { wallet }),

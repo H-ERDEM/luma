@@ -2,12 +2,18 @@
 
 import { useState } from "react";
 import { errorText, useLuma } from "@/hooks/useLuma";
+import { PhantomHint } from "@/components/PhantomHint";
+import { withTimeout } from "@/lib/async";
 import { usdc } from "@/lib/format";
 import { exitQuote } from "@/lib/luma";
+import { phaseLabel } from "@/lib/txPhase";
+
+/** Phantom onayı + zincir onayı bu sürede bitmezse düğme tekrar açılır. */
+const ACTION_TIMEOUT_MS = 120_000;
 
 /** Yatırımcı paneli: fonlama penceresinde fide satın alma, sonra döneme göre çıkış/itfa. */
 export function Launchpad() {
-  const { publicKey, state, kyc, holdings, usdcBalance, fund, sell, claimRefund, redeem, pushLog } = useLuma();
+  const { publicKey, state, kyc, holdings, usdcBalance, fund, sell, claimRefund, redeem, pushLog, txPhase } = useLuma();
   const [quantity, setQuantity] = useState(10);
   const [pending, setPending] = useState<string | null>(null);
 
@@ -19,11 +25,17 @@ export function Launchpad() {
   const exitOpen = state.status === "Active" && day >= state.earlyExitDay && day < state.harvestDay;
   const cost = BigInt(Math.max(0, quantity)) * BigInt(state.unitPrice);
   const kycOk = kyc?.approved === true;
+  // Bekleme sırasında düğmede gerçek aşama görünür (başarı metni değil).
+  const busyText = pending === null ? null : phaseLabel(txPhase, "İşlem hazırlanıyor…");
 
   async function run(label: string, task: () => Promise<string>) {
     setPending(label);
     try {
-      const signature = await task();
+      const signature = await withTimeout(
+        task(),
+        ACTION_TIMEOUT_MS,
+        "İşlem 2 dakikada tamamlanmadı. Phantom'da bekleyen bir istek varsa reddedin; onay penceresi açılmadıysa Phantom yan panelini kapatıp tekrar deneyin.",
+      );
       pushLog({ text: label, tone: "ok", signature });
     } catch (err) {
       pushLog({ text: `${label} başarısız: ${errorText(err)}`, tone: "error" });
@@ -74,12 +86,20 @@ export function Launchpad() {
               onClick={() => run(`${quantity} fide satın alındı`, () => fund(quantity))}
               className="flex-1 rounded-lg bg-leaf px-4 py-2 font-medium text-white hover:bg-leaf-deep disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {pending ?? `${usdc(cost)} USDC öde ve fide al`}
+              {busyText ?? `${usdc(cost)} USDC öde ve fide al`}
             </button>
           </div>
           {!publicKey && <p className="mt-2 text-sm text-muted">Satın almak için cüzdanınızı bağlayın.</p>}
           {publicKey && !kycOk && <p className="mt-2 text-sm text-heat">Satın almadan önce kimliğinizi doğrulayın.</p>}
         </div>
+      )}
+
+      {txPhase === "signing" && <PhantomHint />}
+
+      {state.status !== "Active" && owned === 0 && (
+        <p className="mt-6 rounded-lg bg-paper p-3 text-sm">
+          Bu parti kapandı. Yeni bir parti için jüri konsolunda "Yeni parti başlat"a basın.
+        </p>
       )}
 
       {state.status === "Active" && !fundingOpen && !exitOpen && day < state.harvestDay && (
@@ -93,7 +113,7 @@ export function Launchpad() {
           title="Erken çıkış"
           body={`Bonding curve şu an fide başına ${usdc(state.curvePrice)} USDC ödüyor. Tümünü satarsanız ${usdc(exitQuote(state, owned))} USDC alırsınız.`}
           cta={`${owned} fideyi sat`}
-          pending={pending}
+          pending={busyText}
           onClick={() => run(`${owned} fide bonding curve'e satıldı`, () => sell(owned))}
         />
       )}
@@ -104,7 +124,7 @@ export function Launchpad() {
           body={`Parametrik sigorta tetiklendi. Fide başına ${usdc(state.refundPrice)} USDC anapara iadesi alabilirsiniz.`}
           cta={`${owned} fide için iadeyi al`}
           tone="heat"
-          pending={pending}
+          pending={busyText}
           onClick={() => run("Anapara iadesi alındı", () => claimRefund(owned))}
         />
       )}
@@ -114,7 +134,7 @@ export function Launchpad() {
           title="Hasat itfası"
           body={`Hasat OTC alıcısına satıldı. Fide başına ${usdc(state.redemptionPrice, 4)} USDC ödenir ve token'lar yakılır.`}
           cta={`${owned} fideyi itfa et`}
-          pending={pending}
+          pending={busyText}
           onClick={() => run("Token'lar yakıldı ve itfa edildi", () => redeem(owned))}
         />
       )}

@@ -2,9 +2,9 @@ import express, { Request, Response } from "express";
 import cors from "cors";
 import { PublicKey } from "@solana/web3.js";
 import { z } from "zod";
-import { env } from "./config";
+import { env, maskRpcUrl } from "./config";
 import { buildTelemetry, theoreticalCurve } from "./biology";
-import { AppContext, describeError } from "./context";
+import { AppContext, BatchStateSnapshot, describeError } from "./context";
 import { createSimulatorRouter } from "./simulator";
 
 const walletParam = z.string().refine((v) => {
@@ -15,6 +15,33 @@ const walletParam = z.string().refine((v) => {
     return false;
   }
 }, "Geçerli bir Solana adresi değil");
+
+/** Zincirdeki son ölçüm + aynı gün için simüle edilmiş canlı sensör okuması. */
+function telemetryFeed(ctx: AppContext, state: BatchStateSnapshot) {
+  const a = ctx.activeBatch();
+  const committed = state.telemetry;
+  const breach = committed.waterTempCentiC > 3_200 || (committed.flowRateMlMin === 0 && Number(committed.sequence) > 0);
+  const liveSeed = Math.floor(Date.now() / 4_000);
+  const live = buildTelemetry(committed.day, 0n, BigInt(Math.floor(Date.now() / 1_000)), {
+    outage: breach || state.status === "Defaulted",
+    jitterSeed: liveSeed,
+  });
+  return {
+    status: state.status,
+    committed,
+    live: {
+      day: live.day,
+      growthFactorBps: live.growthFactorBps,
+      waterTempCentiC: live.waterTempCentiC,
+      flowRateMlMin: live.flowRateMlMin,
+      ecMicroSCm: live.ecMicroSCm,
+      phCenti: live.phCenti,
+      observedAt: live.observedAt.toString(),
+    },
+    history: ctx.store.history(a.batchId),
+    curve: theoreticalCurve(BigInt(state.unitPrice)),
+  };
+}
 
 export function createApp(ctx: AppContext) {
   const app = express();
@@ -33,7 +60,7 @@ export function createApp(ctx: AppContext) {
     };
 
   app.get("/api/health", (_req, res) => {
-    res.json({ ok: true, rpc: env.rpcUrl });
+    res.json({ ok: true, rpc: maskRpcUrl(env.rpcUrl) });
   });
 
   app.get(
@@ -44,39 +71,25 @@ export function createApp(ctx: AppContext) {
     }),
   );
 
+  const isFresh = (req: Request): boolean => req.query.fresh === "1";
+
   app.get(
     "/api/batch/state",
-    handle(async () => ctx.client.batchState(ctx.activeBatch(), ctx.usdcMint())),
+    handle(async (req) => ctx.batchState({ fresh: isFresh(req) })),
   );
 
   /** Canlı IoT akışı: zincire yazılmış son ölçüm + aynı gün için simüle sensör okuması. */
   app.get(
     "/api/telemetry/current",
-    handle(async () => {
-      const a = ctx.activeBatch();
-      const state = await ctx.client.batchState(a, ctx.usdcMint());
-      const committed = state.telemetry;
-      const breach = committed.waterTempCentiC > 3_200 || (committed.flowRateMlMin === 0 && Number(committed.sequence) > 0);
-      const liveSeed = Math.floor(Date.now() / 4_000);
-      const live = buildTelemetry(committed.day, 0n, BigInt(Math.floor(Date.now() / 1_000)), {
-        outage: breach || state.status === "Defaulted",
-        jitterSeed: liveSeed,
-      });
-      return {
-        status: state.status,
-        committed,
-        live: {
-          day: live.day,
-          growthFactorBps: live.growthFactorBps,
-          waterTempCentiC: live.waterTempCentiC,
-          flowRateMlMin: live.flowRateMlMin,
-          ecMicroSCm: live.ecMicroSCm,
-          phCenti: live.phCenti,
-          observedAt: live.observedAt.toString(),
-        },
-        history: ctx.store.history(a.batchId),
-        curve: theoreticalCurve(BigInt(state.unitPrice)),
-      };
+    handle(async (req) => telemetryFeed(ctx, await ctx.batchState({ fresh: isFresh(req) }))),
+  );
+
+  /** Durum ve telemetri tek yanıtta (tek RPC turu); arayüzün yoklaması bunu kullanır. */
+  app.get(
+    "/api/snapshot",
+    handle(async (req) => {
+      const state = await ctx.batchState({ fresh: isFresh(req) });
+      return { state, feed: telemetryFeed(ctx, state) };
     }),
   );
 
@@ -105,6 +118,6 @@ export function createApp(ctx: AppContext) {
 if (require.main === module) {
   const ctx = new AppContext();
   createApp(ctx).listen(env.port, () => {
-    console.log(`LUMA backend http://localhost:${env.port} (RPC: ${env.rpcUrl})`);
+    console.log(`LUMA backend http://localhost:${env.port} (RPC: ${maskRpcUrl(env.rpcUrl)})`);
   });
 }
