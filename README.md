@@ -220,7 +220,7 @@ cd frontend
 npm run use:devnet && npm run dev                  # ya da use:localnet
 ```
 
-Devnet profili ayrı bir admin anahtarı (`backend/.keys/devnet-admin.json`), ayrı oracle anahtar klasörü (`.keys/devnet`) ve ayrı durum klasörü (`.data/devnet`) kullanır; localnet ayarlarınız etkilenmez. RPC adresi sağlayıcı anahtarı içerebilir: `.env.devnet` dosyalarına yazın, `*.example` dosyalarına yazmayın. Backend adresi `/api/health` yanıtında ve loglarda maskelenir.
+Devnet profili ayrı bir admin anahtarı (`backend/.keys/devnet-admin.json`), ayrı oracle anahtar klasörü (`.keys/devnet`) kullanır; localnet ayarlarınız etkilenmez. RPC adresi sağlayıcı anahtarı içerebilir: `.env.devnet` dosyalarına yazın, `*.example` dosyalarına yazmayın. Backend adresi `/api/health` yanıtında ve loglarda maskelenir.
 
 ### Phantom ile test
 
@@ -228,10 +228,44 @@ Devnet profili ayrı bir admin anahtarı (`backend/.keys/devnet-admin.json`), ay
 - ⚠️ **Phantom'un Chrome yan paneli açıkken onay penceresi açılmayabilir** ve arayüz "Phantom'da onay bekleniyor…" durumunda kalır. Onay penceresi açılmadıysa Phantom yan panelini kapatıp tekrar deneyin. Yine de görünmezse tarayıcı araç çubuğundaki Phantom simgesine tıklayın. Bekleyen bir istek takılı kalırsa Phantom'dan reddedin.
 - Jüri konsolundaki adımlar bir partiyi kapatabilir (3. ve 4. adımlar). Kapalı partide 1-4. adımlar devre dışıdır; önce **Yeni parti başlat**'a basın.
 
+
+### Render'a dağıtım (durumsuz backend)
+
+Backend diske hiçbir şey yazmaz; Render gibi diski kalıcı olmayan bir ortamda çalışır. Durum zincirden okunur:
+
+| Bilgi | Kaynak |
+|---|---|
+| USDC mint'i | `ProtocolConfig.usdc_mint` (zincir) |
+| Aktif parti | Zincirdeki en yeni **hazır** parti (hesap var, hook meta listesi var, gün 0 telemetrisi yazılmış). Yarıda kalmış (yetim) partiler atlanır. `ACTIVE_BATCH_ID` ile elle belirlenebilir |
+| Telemetri geçmişi | Açılışta partinin son işlemlerinden yeniden kurulur (talimat + `TelemetryUpdated` olayı); sonrası bellekte tutulur |
+| Anahtarlar | `ADMIN_KEYPAIR_JSON`, `DON_KEYPAIR_JSON`, `FALLBACK_KEYPAIR_JSON` ortam değişkenleri |
+| IDL | `backend/idl/*.json` (depoda) |
+
+`NODE_ENV=production` iken anahtarlar dosyadan okunmaz ve **hiçbir zaman otomatik üretilmez**. Başlangıçta anahtarların açık adresleri zincirdeki `ProtocolConfig` ile karşılaştırılır; uyuşmazlık varsa süreç açık bir hatayla başlamaz (her dağıtımda yeni anahtar üretilmesi oracle'ı sessizce bozardı).
+
+Adımlar:
+1. **Bir kez, yerel makinenizden** devnet'i kurun: `cd backend && npm run bootstrap:devnet` (program deploy'u ve bootstrap zaten yapıldıysa gerekmez). Render'da bootstrap çalıştırılmaz.
+2. Render'da **Blueprint** olarak `render.yaml` dosyasını bağlayın. Dosyada hiçbir gizli değer yoktur; `sync: false` işaretli değişkenleri Render panelinden girin:
+   - `ADMIN_KEYPAIR_JSON`: devnet admin anahtarının (`backend/.keys/devnet-admin.json`) içeriği, tek satır JSON dizisi
+   - `DON_KEYPAIR_JSON`, `FALLBACK_KEYPAIR_JSON`: `backend/.keys/devnet/` altındaki iki dosyanın içeriği (bootstrap'in zincire yazdığı anahtarlar; başka anahtar çalışmaz)
+   - `RPC_URL`, `DEMO_RESET_TOKEN`, `FRONTEND_ORIGIN` (frontend'in tam adresi)
+   
+   Bu değerleri sohbete, commit'e veya `render.yaml`'a yazmayın.
+3. Frontend'de `NEXT_PUBLIC_BACKEND_URL`'i Render adresine çevirin.
+4. **Sağlık kontrolü** `/api/live`'dır (`render.yaml` böyle ayarlıdır). `/api/health` admin SOL'u düşünce 503 döndüğü için onu Render'a değil bir uptime izleyicisine verin; hem uyarı e-postası alırsınız hem de düzenli istekler servisin uyanık kalmasına yardımcı olabilir (ücretsiz planın uyku kurallarını Render dokümanından doğrulayın).
+5. Programları yeniden derlerseniz: `anchor build`, ardından `cd backend && npm run sync-idl` ve `backend/idl` değişikliğini commit edin (`npm run check-idl` depodaki kopyaların taze çıktıyla aynı olduğunu doğrular).
+
+Sınırlar:
+- **Tek örnek.** Telemetri kilidi (`Mutex`), faucet/IP sayaçları ve durum önbelleği bellektedir; birden çok örneğe ölçeklenirse tutarsız olur.
+- Sunucu çalışırken **başka bir yerden** (ör. yerel `bootstrap`) yeni parti oluşturulursa sunucu bunu görmez; yeniden başlatın ya da `ACTIVE_BATCH_ID` kullanın.
+- Ücretsiz Render servisleri boştayken uyuyabilir (ilk istek gecikir); durum yeniden kurulumu hafiftir (birkaç RPC çağrısı). `render.yaml` alan adlarını ve plan davranışını dağıtımdan önce Render'ın güncel dokümanıyla doğrulayın.
+
 ### Backend API
 
 | Yöntem | Yol | Açıklama |
 |---|---|---|
+| GET | `/api/live` | Yalnızca süreç canlı mı (RPC çağrısı yapmaz, her zaman 200). Barındırıcının sağlık kontrolü içindir |
+| GET | `/api/health` | Canlılık + admin SOL durumu; admin eşiğin altındaysa 503. Uptime izleyicisi içindir |
 | GET | `/api/telemetry/current` | Zincirdeki son telemetri, canlı sensör okuması, oracle geçmişi, teorik eğri |
 | GET | `/api/snapshot` | Durum ve telemetri tek yanıtta (arayüz bunu yoklar). Kısa süreli paylaşılan önbellek; `?fresh=1` ile atlanır |
 | GET | `/api/batch/state` | Aktif parti adresleri, durum, fiyatlar, kasa bakiyeleri |
