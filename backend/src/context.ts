@@ -1,4 +1,5 @@
 import { PublicKey } from "@solana/web3.js";
+import { ZodError } from "zod";
 import { BATCH_ECONOMICS, DEMO, env, limits, redactSecrets } from "./config";
 import { FaucetGuard, LimitError } from "./limits";
 import { LumaClient, OracleMode } from "./chain";
@@ -259,10 +260,17 @@ export class AppContext {
   }
 }
 
+/** "alan: açıklama; alan2: açıklama" (Zod'un ham JSON dökümü yerine). */
+function describeZodError(err: ZodError): string {
+  return err.issues.map((issue) => (issue.path.length > 0 ? `${issue.path.join(".")}: ` : "") + issue.message).join("; ");
+}
+
 export function describeError(err: unknown): { status: number; message: string; logs?: string[]; retryAfterSec?: number } {
   if (err instanceof HttpError || err instanceof LimitError) {
     return { status: err.status, message: redactSecrets(err.message), retryAfterSec: err.retryAfterSec };
   }
+  // İstek doğrulaması (geçersiz cüzdan adresi, aralık dışı gün vb.) istemci hatasıdır: 400, 500 değil.
+  if (err instanceof ZodError) return { status: 400, message: describeZodError(err) };
   const e = err as { error?: { errorMessage?: string }; message?: string; logs?: string[] };
   return {
     status: 500,
