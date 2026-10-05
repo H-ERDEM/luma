@@ -15,12 +15,12 @@ On-chain: [`luma_batch`](https://explorer.solana.com/address/A7d9dA7vCcVQEoMPVoT
 1. Install the [Phantom](https://phantom.app) browser extension (Chrome) and create or import a wallet. A fresh wallet is fine; **you do not need any SOL**, the demo sends a little for fees.
 2. Open Phantom, then **Settings → Developer Settings** and turn on **Testnet Mode**. Select **Solana Devnet**. (Menu names can differ slightly between Phantom versions.)
 
-> ⚠️ **Keep Phantom's Chrome side panel closed.** When it is open, Phantom may not show the approval pop-up and the page waits forever on "Phantom'da onay bekleniyor…" (waiting for approval). If no approval window appears: close the side panel and try again; if it is still missing, click the Phantom icon in the browser toolbar, and reject any stale pending request there.
+> ⚠️ **Keep Phantom's Chrome side panel closed.** When it is open, Phantom may not show the approval pop-up and the page waits forever on "Waiting for approval in Phantom…". If no approval window appears: close the side panel and try again; if it is still missing, click the Phantom icon in the browser toolbar, and reject any stale pending request there.
 
 ### 2. Open the site and connect
 
-1. Go to https://luma-ten-pearl.vercel.app and click **Select Wallet** (top right) → **Phantom**.
-2. Open the **Jüri konsolu** (jury console) with the button at the bottom right. The interface is in Turkish; the labels used below are the ones on screen.
+1. Go to https://luma-ten-pearl.vercel.app and click **Connect wallet** (top right) → **Phantom**. The page also walks you through it: **Connect wallet → Get test funds → Back a harvest** (the "Get started" section).
+2. Open the **Demo console** with the button at the bottom right of the page.
 
 ### 3. Walk through the jury console
 
@@ -28,21 +28,21 @@ Run the steps in order. Phantom asks you to approve only the investor transactio
 
 | # | Button | What it does | What you should see |
 |---|---|---|---|
-| 1 | **Fide fonla** (fund seedlings) | Approves your wallet in the on-chain KYC registry, tops your test USDC up to 100, and buys 10 seedlings for 4.50 USDC. | Escrow ("Teminat kasası") shows 4.50 USDC, equal to the required collateral. Your seedling count is 10. |
-| 2 | **Günü 20'ye ilerlet ve erken çık** (advance to day 20 and exit early) | Writes oracle readings for days 5, 10, 15 and 20, alternating the primary signer and the Ed25519 fallback, then sells half of your seedlings back to the bonding curve. | "Oracle kayıtları" lists the readings with their source; the curve price reaches 0.61 USDC; with the default 10 seedlings, 5 are sold for 3.05 USDC. The principal of the remaining seedlings stays in escrow. |
-| 3 | **Arıza yarat ve sigortayı incele** (trigger a failure) | Simulates a failure: water temperature rises to 33.5 °C and the pump stops. The parametric trigger fires and your remaining seedlings are refunded at the full 0.45 USDC. | The sensor cards turn red, the status becomes "Sigorta tetiklendi" and the log shows the principal refund. **The batch is closed.** |
-| 4 | **Hasadı bitir, token yak ve itfa et** (harvest, burn and redeem) | Writes the day-40 reading, deposits the OTC buyer's USDC into the vault, and redeems your remaining seedlings at 0.7125 USDC each (0.76 minus the 6.25% protocol fee), burning the tokens. | Your seedlings are burned (the supply drops accordingly) and the log shows the redemption. **The batch is closed.** |
-| – | **Yeni parti başlat** (start a new batch) | Opens a fresh batch at day 0 so you can replay the demo. | The header shows the new batch number and "0. gün". Requires the **admin key**, see below. |
+| 1 | **Fund seedlings** | Approves your wallet in the on-chain KYC registry, tops your test USDC up to 100, and buys 10 seedlings for 4.50 USDC. | Escrow (the "Collateral vault" card) shows 4.50 USDC, equal to the required collateral. Your seedling count is 10. |
+| 2 | **Advance to day 20 and exit early** | Writes oracle readings for days 5, 10, 15 and 20, alternating the primary signer and the Ed25519 fallback, then sells half of your seedlings back to the bonding curve. | "Oracle records" lists the readings with their source; the curve price reaches 0.61 USDC; with the default 10 seedlings, 5 are sold for 3.05 USDC. The principal of the remaining seedlings stays in escrow. |
+| 3 | **Trigger a failure and see the insurance** | Simulates a failure: water temperature rises to 33.5 °C and the pump stops. The parametric trigger fires and your remaining seedlings are refunded at the full 0.45 USDC. | The sensor cards turn red, the status becomes "Insurance triggered" and the log shows the principal refund. **The batch is closed.** |
+| 4 | **Harvest, burn and redeem** | Writes the day-40 reading, deposits the OTC buyer's USDC into the vault, and redeems your remaining seedlings at 0.7125 USDC each (0.76 minus the 6.25% protocol fee), burning the tokens. | Your seedlings are burned (the supply drops accordingly) and the log shows the redemption. **The batch is closed.** |
+| – | **Start new batch** | Opens a fresh batch at day 0 so you can replay the demo. | The console header shows the new batch number and "day 0". Requires the **admin key**, see below. |
 
-Steps 3 and 4 are two different endings of the same batch, so on one batch you see either the insurance refund (1 → 2 → 3) or the harvest (1 → 2 → 4). To see both, start a new batch in between. Once a batch is closed, steps 1–4 are disabled with "Bu parti kapandı, önce Yeni parti başlat'a basın."
+Steps 3 and 4 are two different endings of the same batch, so on one batch you see either the insurance refund (1 → 2 → 3) or the harvest (1 → 2 → 4). To see both, start a new batch in between. Once a batch is closed, steps 1–4 are disabled with "This batch is closed. Start a new batch first."
 
-You can also use the panels on the main page (**Kimliği doğrula**, **Fide satın al**, and the exit, refund and redeem buttons that appear for the current stage) instead of the console.
+You can also use the panels on the main page instead of the console: **Get test funds** (verifies your wallet and tops up test USDC), the **Back a harvest** card, and the exit, refund and redeem buttons that appear for the current stage.
 
 ### Good to know
 
-- **The first load can be slow.** The backend runs on Render's free plan, which puts the service to sleep when it is idle. After a quiet period the first request wakes it up, and until then the page may show "Parti verisi yükleniyor…" or a "Backend'e ulaşılamıyor" message (ignore its hint about `npm run dev`; it is a leftover from local development). It retries on its own. If nothing changes after a minute, open https://luma-backend-t9v4.onrender.com/api/live in a new tab to wake it, then reload.
-- **The demo batch is shared.** Everyone who opens the site sees the same batch. If someone else already advanced or closed it, your steps behave accordingly: step 1 needs a batch at day 0–3, and closed batches need **Yeni parti başlat**.
-- **Starting a new batch needs the admin key.** The console has a **Yönetici anahtarı** (admin key) field next to **Yeni parti başlat**. The key is provided in the application form, not here. Steps 1–4 do not need it.
+- **The first load can be slow.** The backend runs on Render's free plan, which puts the service to sleep when it is idle. After a quiet period the first request wakes it up, and until then the page may show "Loading batch data…" or a notice that the server may be waking up ("The server may be waking up…"). The page retries on its own. If nothing changes after a minute, open https://luma-backend-t9v4.onrender.com/api/live in a new tab to wake it, then reload.
+- **The demo batch is shared.** Everyone who opens the site sees the same batch. If someone else already advanced or closed it, your steps behave accordingly: step 1 needs a batch at day 0–3, and closed batches need **Start new batch**.
+- **Starting a new batch needs the admin key.** The console has an **Admin key** field next to **Start new batch**. The key is provided in the application form, not here. Steps 1–4 do not need it.
 - **Limits protect the demo.** Each wallet is topped up to at most 100 test USDC, with a daily cap on refills, and the demo endpoints are rate limited per IP. If the faucet reports that the daily budget is used up, try again after the UTC day changes.
 - **No SOL in your wallet?** The faucet sends a small amount of Devnet SOL. If the console says the SOL top-up is switched off, get Devnet SOL from https://faucet.solana.com and run the step again.
 
@@ -251,7 +251,7 @@ npm install
 npm run dev                 # http://localhost:3000
 ```
 
-Cüzdanınızı yerel ağa bağlayın. Örneğin Phantom'da: Ayarlar → Geliştirici ayarları → Testnet modu → Solana Localnet. Jüri konsolunun 1. adımı cüzdanınıza SOL ve test USDC'si gönderir.
+Cüzdanınızı yerel ağa bağlayın. Örneğin Phantom'da: Ayarlar → Geliştirici ayarları → Testnet modu → Solana Localnet. Demo console'un 1. adımı (ya da ana sayfadaki "Get test funds" düğmesi) cüzdanınıza SOL ve test USDC'si gönderir.
 
 ### Ortam profilleri (localnet ↔ devnet)
 
@@ -277,8 +277,8 @@ Devnet profili ayrı bir admin anahtarı (`backend/.keys/devnet-admin.json`), ay
 ### Phantom ile test
 
 - Phantom'da **Ayarlar → Geliştirici ayarları → Testnet modu** açık ve ağ **Solana Devnet** (ya da Localnet) olmalıdır.
-- ⚠️ **Phantom'un Chrome yan paneli açıkken onay penceresi açılmayabilir** ve arayüz "Phantom'da onay bekleniyor…" durumunda kalır. Onay penceresi açılmadıysa Phantom yan panelini kapatıp tekrar deneyin. Yine de görünmezse tarayıcı araç çubuğundaki Phantom simgesine tıklayın. Bekleyen bir istek takılı kalırsa Phantom'dan reddedin.
-- Jüri konsolundaki adımlar bir partiyi kapatabilir (3. ve 4. adımlar). Kapalı partide 1-4. adımlar devre dışıdır; önce **Yeni parti başlat**'a basın.
+- ⚠️ **Phantom'un Chrome yan paneli açıkken onay penceresi açılmayabilir** ve arayüz "Waiting for approval in Phantom…" durumunda kalır. Onay penceresi açılmadıysa Phantom yan panelini kapatıp tekrar deneyin. Yine de görünmezse tarayıcı araç çubuğundaki Phantom simgesine tıklayın. Bekleyen bir istek takılı kalırsa Phantom'dan reddedin.
+- Demo console'daki adımlar bir partiyi kapatabilir (3. ve 4. adımlar). Kapalı partide 1-4. adımlar devre dışıdır; önce **Start new batch**'e basın.
 
 
 ### Render'a dağıtım (durumsuz backend)
@@ -348,7 +348,7 @@ Dağıtım notları:
 - **Ters vekil arkasında** (Render vb.) `TRUST_PROXY=1` ayarlayın; yoksa tüm istekler vekilin IP'sinden gelmiş görünür ve IP sınırı herkesi aynı kişi sayar. Vekil yokken bu değeri 0 bırakın, aksi halde `X-Forwarded-For` taklit edilebilir.
 - Aynı ağdan (ofis, jüri toplantısı) çok kişi bağlanacaksa `RATE_LIMIT_MAX` değerini yükseltin.
 - `/api/health` admin bakiyesi eşiğin altına inince 503 döndüğü için, dışarıdan bir uptime izleyicisi (ör. UptimeRobot) bakiye azalınca e-posta ile uyarabilir.
-- Jüri konsolundaki "Yönetici anahtarı" alanı `DEMO_RESET_TOKEN` ile eşleşmelidir; anahtarı yalnızca jüriyle paylaşacağınız teslim notlarına yazın.
+- Demo console'daki "Admin key" alanı `DEMO_RESET_TOKEN` ile eşleşmelidir; anahtarı yalnızca jüriyle paylaşacağınız teslim notlarına yazın.
 
 ---
 
@@ -388,16 +388,16 @@ Notlar:
 
 ## 4. Jüri sunumu: 2 dakikalık canlı demo
 
-Hazırlık: backend ve frontend çalışıyor, cüzdan bağlı, jüri konsolu (sağ alt) açık, Parti #N gün 0'da.
+Hazırlık: backend ve frontend çalışıyor, cüzdan bağlı, Demo console (sağ alt) açık, Parti #N gün 0'da.
 
 | Süre | Eylem | Ekranda görülen ve anlatılan |
 |---|---|---|
 | 0:00–0:15 | Ana sayfa | "Her token tepsideki bir marul fidesi. Tepsi 40 günü gösteriyor, fiyat 0,45 USDC anapara tabanında. KYC rozeti cüzdanın zincirdeki kaydını okuyor." |
-| 0:15–0:40 | **1. Fide fonla** | KYC onaylanır, test USDC'si yüklenir, cüzdan 10 fide için 4,50 USDC öder. Teminat kasası çubuğu tam dolu. "Ödenen her kuruş teminatta; her transfer Token-2022 hook'u ile KYC'den geçer." |
-| 0:40–1:05 | **2. Günü 20'ye ilerlet ve erken çık** | 5, 10, 15, 20. gün kayıtları oracle listesinde DON ve Ed25519 etiketleriyle akar. Yaprak örtüsü %85'e çıkar, curve 0,61 USDC'yi gösterir. Fidelerin yarısı satılır. "Çıkış, escrow'un serbest fazlasından ve rezervden ödendi; kalan fidelerin teminatı yerinde. Invariant zincirde doğrulandı." |
-| 1:05–1:25 | **3. Arıza yarat ve sigortayı incele** | Su sıcaklığı 33,5 °C'ye çıkar, akış 0 olur, sensör kartları kırmızıya döner. Durum "Sigorta tetiklendi" olur, kalan fideler 0,45 USDC'den iade edilir. "Tetikleyici izinsiz; herkes çağırabilir, karar yalnızca oracle verisine dayanır." |
-| 1:25–1:30 | **Yeni parti başlat**, sonra tekrar **1. Fide fonla** | Yeni parti gün 0'da açılır. |
-| 1:30–2:00 | **4. Hasadı bitir, token yak ve itfa et** | 40. gün kaydı yazılır, curve 0,76 USDC'ye ulaşır. OTC USDC'si kasaya yatar, fideler 0,7125 USDC'den itfa edilip yakılır, arz 0'a iner. "0,45'ten 0,7125'e: %58 brüt getiri, %6,25 protokol payı sonrası." |
+| 0:15–0:40 | **1. Fund seedlings** | KYC onaylanır, test USDC'si yüklenir, cüzdan 10 fide için 4,50 USDC öder. Teminat kasası çubuğu tam dolu. "Ödenen her kuruş teminatta; her transfer Token-2022 hook'u ile KYC'den geçer." |
+| 0:40–1:05 | **2. Advance to day 20 and exit early** | 5, 10, 15, 20. gün kayıtları oracle listesinde DON ve Ed25519 etiketleriyle akar. Yaprak örtüsü %85'e çıkar, curve 0,61 USDC'yi gösterir. Fidelerin yarısı satılır. "Çıkış, escrow'un serbest fazlasından ve rezervden ödendi; kalan fidelerin teminatı yerinde. Invariant zincirde doğrulandı." |
+| 1:05–1:25 | **3. Trigger a failure and see the insurance** | Su sıcaklığı 33,5 °C'ye çıkar, akış 0 olur, sensör kartları kırmızıya döner. Durum "Insurance triggered" olur, kalan fideler 0,45 USDC'den iade edilir. "Tetikleyici izinsiz; herkes çağırabilir, karar yalnızca oracle verisine dayanır." |
+| 1:25–1:30 | **Start new batch**, sonra tekrar **1. Fund seedlings** | Yeni parti gün 0'da açılır. |
+| 1:30–2:00 | **4. Harvest, burn and redeem** | 40. gün kaydı yazılır, curve 0,76 USDC'ye ulaşır. OTC USDC'si kasaya yatar, fideler 0,7125 USDC'den itfa edilip yakılır, arz 0'a iner. "0,45'ten 0,7125'e: %58 brüt getiri, %6,25 protokol payı sonrası." |
 
 Zaman kısaysa 3. adımı atlayıp 1 → 2 → 4 sırasıyla tek parti üzerinde ilerleyin.
 
