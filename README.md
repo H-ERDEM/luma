@@ -4,7 +4,7 @@
 
 > The technical documentation further down is in Turkish. This section is the English quick start for judges.
 
-**Live demo: https://luma-ten-pearl.vercel.app** (Solana **Devnet**, no real funds involved)
+**Live demo: https://lumagrow.vercel.app** (Solana **Devnet**, no real funds involved)
 
 LumaGrow tokenizes 40-day hydroponic lettuce batches. One token is one seedling, priced at 0.45 USDC, and every USDC paid stays locked in a collateral vault. You can exit early on a bonding curve, claim your principal back if the sensors report a critical failure (parametric insurance), or redeem at harvest. The demo console plays the whole 40-day cycle in a few clicks, and each step is a real transaction on Devnet.
 
@@ -19,7 +19,7 @@ On-chain: [`luma_batch`](https://explorer.solana.com/address/A7d9dA7vCcVQEoMPVoT
 
 ### 2. Open the site and connect
 
-1. Go to https://luma-ten-pearl.vercel.app and click **Connect wallet** (top right) → **Phantom**. The page also walks you through it: **Connect wallet → Get test funds → Back a harvest** (the "Get started" section).
+1. Go to https://lumagrow.vercel.app and click **Connect wallet** (top right) → **Phantom**. The page also walks you through it: **Connect wallet → Get test funds → Back a harvest** (the "Get started" section).
 2. Open the **Demo console** with the button at the bottom right of the page.
 
 ### 3. Walk through the jury console
