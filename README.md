@@ -1,5 +1,57 @@
 # LUMA — AgTech Canlı Varlık Kanıtı (Proof-of-Asset) ve Token-2022
 
+## Try it live
+
+> The technical documentation further down is in Turkish. This section is the English quick start for judges.
+
+**Live demo: https://luma-ten-pearl.vercel.app** (Solana **Devnet**, no real funds involved)
+
+LUMA tokenizes 40-day hydroponic lettuce batches. One token is one seedling, priced at 0.45 USDC, and every USDC paid stays locked in a collateral vault. You can exit early on a bonding curve, claim your principal back if the sensors report a critical failure (parametric insurance), or redeem at harvest. The demo console plays the whole 40-day cycle in a few clicks, and each step is a real transaction on Devnet.
+
+On-chain: [`luma_batch`](https://explorer.solana.com/address/A7d9dA7vCcVQEoMPVoTgTmNRoRHvPk9VqurhTKWLRGmM?cluster=devnet) and [`luma_transfer_hook`](https://explorer.solana.com/address/H1vq1NJ4wm4WwPchrChCf4a2MbDABdNya2rusQ7qtj4z?cluster=devnet) (Token-2022 transfer hook for KYC-gated transfers).
+
+### 1. Put Phantom on Devnet
+
+1. Install the [Phantom](https://phantom.app) browser extension (Chrome) and create or import a wallet. A fresh wallet is fine; **you do not need any SOL**, the demo sends a little for fees.
+2. Open Phantom, then **Settings → Developer Settings** and turn on **Testnet Mode**. Select **Solana Devnet**. (Menu names can differ slightly between Phantom versions.)
+
+> ⚠️ **Keep Phantom's Chrome side panel closed.** When it is open, Phantom may not show the approval pop-up and the page waits forever on "Phantom'da onay bekleniyor…" (waiting for approval). If no approval window appears: close the side panel and try again; if it is still missing, click the Phantom icon in the browser toolbar, and reject any stale pending request there.
+
+### 2. Open the site and connect
+
+1. Go to https://luma-ten-pearl.vercel.app and click **Select Wallet** (top right) → **Phantom**.
+2. Open the **Jüri konsolu** (jury console) with the button at the bottom right. The interface is in Turkish; the labels used below are the ones on screen.
+
+### 3. Walk through the jury console
+
+Run the steps in order. Phantom asks you to approve only the investor transactions (buy, sell, refund, redeem); the oracle updates, KYC and faucet are done by the backend. Each step can take a few seconds up to about half a minute, and every line in the log has an **işlem** link to the transaction on Solana Explorer (Devnet).
+
+| # | Button | What it does | What you should see |
+|---|---|---|---|
+| 1 | **Fide fonla** (fund seedlings) | Approves your wallet in the on-chain KYC registry, tops your test USDC up to 100, and buys 10 seedlings for 4.50 USDC. | Escrow ("Teminat kasası") shows 4.50 USDC, equal to the required collateral. Your seedling count is 10. |
+| 2 | **Günü 20'ye ilerlet ve erken çık** (advance to day 20 and exit early) | Writes oracle readings for days 5, 10, 15 and 20, alternating the primary signer and the Ed25519 fallback, then sells half of your seedlings back to the bonding curve. | "Oracle kayıtları" lists the readings with their source; the curve price reaches 0.61 USDC; with the default 10 seedlings, 5 are sold for 3.05 USDC. The principal of the remaining seedlings stays in escrow. |
+| 3 | **Arıza yarat ve sigortayı incele** (trigger a failure) | Simulates a failure: water temperature rises to 33.5 °C and the pump stops. The parametric trigger fires and your remaining seedlings are refunded at the full 0.45 USDC. | The sensor cards turn red, the status becomes "Sigorta tetiklendi" and the log shows the principal refund. **The batch is closed.** |
+| 4 | **Hasadı bitir, token yak ve itfa et** (harvest, burn and redeem) | Writes the day-40 reading, deposits the OTC buyer's USDC into the vault, and redeems your remaining seedlings at 0.7125 USDC each (0.76 minus the 6.25% protocol fee), burning the tokens. | Your seedlings are burned (the supply drops accordingly) and the log shows the redemption. **The batch is closed.** |
+| – | **Yeni parti başlat** (start a new batch) | Opens a fresh batch at day 0 so you can replay the demo. | The header shows the new batch number and "0. gün". Requires the **admin key**, see below. |
+
+Steps 3 and 4 are two different endings of the same batch, so on one batch you see either the insurance refund (1 → 2 → 3) or the harvest (1 → 2 → 4). To see both, start a new batch in between. Once a batch is closed, steps 1–4 are disabled with "Bu parti kapandı, önce Yeni parti başlat'a basın."
+
+You can also use the panels on the main page (**Kimliği doğrula**, **Fide satın al**, and the exit, refund and redeem buttons that appear for the current stage) instead of the console.
+
+### Good to know
+
+- **The first load can be slow.** The backend runs on Render's free plan, which puts the service to sleep when it is idle. After a quiet period the first request wakes it up, and until then the page may show "Parti verisi yükleniyor…" or a "Backend'e ulaşılamıyor" message (ignore its hint about `npm run dev`; it is a leftover from local development). It retries on its own. If nothing changes after a minute, open https://luma-backend-t9v4.onrender.com/api/live in a new tab to wake it, then reload.
+- **The demo batch is shared.** Everyone who opens the site sees the same batch. If someone else already advanced or closed it, your steps behave accordingly: step 1 needs a batch at day 0–3, and closed batches need **Yeni parti başlat**.
+- **Starting a new batch needs the admin key.** The console has a **Yönetici anahtarı** (admin key) field next to **Yeni parti başlat**. The key is provided in the application form, not here. Steps 1–4 do not need it.
+- **Limits protect the demo.** Each wallet is topped up to at most 100 test USDC, with a daily cap on refills, and the demo endpoints are rate limited per IP. If the faucet reports that the daily budget is used up, try again after the UTC day changes.
+- **No SOL in your wallet?** The faucet sends a small amount of Devnet SOL. If the console says the SOL top-up is switched off, get Devnet SOL from https://faucet.solana.com and run the step again.
+
+### What is real and what is simulated
+
+- **Real:** both programs on Devnet, the Token-2022 mint with its transfer hook (every transfer is checked against the on-chain KYC registry), the escrow and solvency invariant, the bonding curve, the parametric default, the harvest redemption, and the oracle signature checks (Ed25519 verified on-chain, replay protection by sequence number).
+- **Simulated for the demo:** the sensor data (generated by the backend's biology simulator), the "DON" signer (a stand-in key for what would be a Chainlink-style oracle network), the OTC buyer at harvest, the KYC provider (it approves any wallet), and the USDC (a mock token minted by the demo faucet, not Circle's USDC).
+
+
 40 günlük hidroponik marul partilerini Solana üzerinde tokenleştiren protokol. Her token bir fideyi temsil eder. Fide 0,45 USDC'ye satılır ve ödenen USDC'nin tamamı teminat kasasında kilitli kalır. Token'ın değeri sensör verisiyle beslenen bir adil değer formülüne göre büyür. Yatırımcı üç yoldan çıkabilir: 20. günde bonding curve'e satarak, kritik arızada parametrik sigortayla anaparasını geri alarak ya da 40. günde hasat itfasıyla. Token'ların her transferi, Token-2022 transfer hook'u üzerinden zincir üstü KYC kaydına tabidir.
 
 | Katman | Dizin | Teknoloji |
