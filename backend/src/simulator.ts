@@ -20,7 +20,7 @@ const walletSchema = z.object({
     } catch {
       return false;
     }
-  }, "Geçerli bir Solana cüzdan adresi değil"),
+  }, "Not a valid Solana wallet address"),
 });
 
 export function createSimulatorRouter(ctx: AppContext): Router {
@@ -92,7 +92,7 @@ export function createSimulatorRouter(ctx: AppContext): Router {
 
       // Admin bakiyesi çok düşükse faucet tamamen durur (işlem ücretlerini karşılayamaz).
       const admin = await ctx.adminStatus({ fresh: true });
-      if (admin.critical) throw new HttpError(503, "Test faucet'i şu an kapalı: yönetici cüzdanında SOL azaldı.");
+      if (admin.critical) throw new HttpError(503, "The test faucet is closed right now: the admin wallet is low on SOL.");
 
       // USDC: cüzdanın zincirdeki bakiyesini üst sınıra tamamlar; sınırdaysa hiçbir şey basmaz.
       const balance = await ctx.client.usdcBalance(owner, usdcMint);
@@ -136,7 +136,7 @@ export function createSimulatorRouter(ctx: AppContext): Router {
   // Tüm sistemi etkileyen tek işlem: DEMO_RESET_TOKEN doluysa x-demo-token gerektirir.
   router.post(
     "/reset",
-    requireDemoToken(limits.demoResetToken, "Yeni parti başlatmak için yönetici anahtarı gerekli."),
+    requireDemoToken(limits.demoResetToken, "An admin key is required to start a new batch."),
     handle(async () => {
       const a = await ctx.startNewBatch();
       return { batchId: a.batchId.toString(), batchVault: a.batchVault.toBase58(), mint: a.mint.toBase58() };
@@ -144,7 +144,7 @@ export function createSimulatorRouter(ctx: AppContext): Router {
   );
 
   router.use((_req, res) => {
-    const err = new HttpError(404, "Bilinmeyen demo uç noktası");
+    const err = new HttpError(404, "Unknown demo endpoint");
     res.status(err.status).json({ error: err.message });
   });
 

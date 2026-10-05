@@ -104,7 +104,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BACKEND_URL}${path}`, { ...init, headers, cache: "no-store" });
   const body = (await res.json()) as T & { error?: string };
   if (!res.ok) {
-    throw new Error(body.error ?? `İstek başarısız (${res.status})`);
+    throw new Error(body.error ?? `Request failed (${res.status})`);
   }
   return body;
 }

@@ -69,7 +69,7 @@ export async function fundAndMint(program: Program, state: BatchState, buyer: Pu
   });
   const conf = await provider.connection.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, "confirmed");
   if (conf.value.err) {
-    throw new Error(`İşlem zincirde başarısız oldu: ${JSON.stringify(conf.value.err)}`);
+    throw new Error(`Transaction failed on-chain: ${JSON.stringify(conf.value.err)}`);
   }
   return sig;
 }

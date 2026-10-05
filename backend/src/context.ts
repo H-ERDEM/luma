@@ -166,14 +166,14 @@ export class AppContext {
 
   usdcMint(): PublicKey {
     if (this.usdcMintKey === null) {
-      throw new HttpError(503, "Protokol henüz kurulmamış. Yerel makinenizde 'npm run bootstrap' çalıştırın.");
+      throw new HttpError(503, "The protocol has not been set up yet. Run 'npm run bootstrap' on your machine.");
     }
     return this.usdcMintKey;
   }
 
   activeBatch(): BatchAddresses {
     if (this.activeBatchId === null) {
-      throw new HttpError(503, "Hazır parti yok. 'npm run bootstrap' veya POST /demo/reset çalıştırın.");
+      throw new HttpError(503, "There is no ready batch. Run 'npm run bootstrap' or POST /demo/reset.");
     }
     return this.client.batchAddresses(this.activeBatchId, this.usdcMint());
   }
@@ -232,7 +232,7 @@ export class AppContext {
   async requireActiveStatus(a: BatchAddresses): Promise<{ day: number }> {
     const batch = await this.client.fetchBatch(a);
     if (!("active" in batch.status)) {
-      throw new HttpError(409, "Parti artık aktif değil. Yeni demo için POST /demo/reset kullanın.");
+      throw new HttpError(409, "The batch is no longer active. Use POST /demo/reset for a new demo.");
     }
     return { day: Number(batch.telemetry.day) };
   }
@@ -242,10 +242,10 @@ export class AppContext {
     const a = this.activeBatch();
     const { day } = await this.requireActiveStatus(a);
     if (targetDay <= day) {
-      throw new HttpError(400, `Hedef gün (${targetDay}) mevcut günden (${day}) büyük olmalı.`);
+      throw new HttpError(400, `The target day (${targetDay}) must be greater than the current day (${day}).`);
     }
     if (targetDay > BATCH_ECONOMICS.harvestDay) {
-      throw new HttpError(400, `Hedef gün hasat gününü (${BATCH_ECONOMICS.harvestDay}) aşamaz.`);
+      throw new HttpError(400, `The target day cannot pass the harvest day (${BATCH_ECONOMICS.harvestDay}).`);
     }
     const step = DEMO.telemetryStepDays;
     const days: number[] = [];
