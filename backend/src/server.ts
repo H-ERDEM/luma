@@ -15,7 +15,7 @@ const walletParam = z.string().refine((v) => {
   } catch {
     return false;
   }
-}, "Geçerli bir Solana adresi değil");
+}, "Not a valid Solana address");
 
 /** Zincirdeki son ölçüm + aynı gün için simüle edilmiş canlı sensör okuması. */
 function telemetryFeed(ctx: AppContext, state: BatchStateSnapshot) {
@@ -71,7 +71,7 @@ export function createApp(ctx: AppContext) {
       next();
     } catch (err) {
       const { message } = describeError(err);
-      res.status(503).json({ error: `Zincir durumu okunamadı, birkaç saniye sonra tekrar deneyin. (${message})` });
+      res.status(503).json({ error: `The chain state could not be read; try again in a few seconds. (${message})` });
     }
   });
 

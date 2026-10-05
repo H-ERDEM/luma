@@ -102,9 +102,9 @@ export class LimitError extends Error {
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function humanDuration(sec: number): string {
-  if (sec < 90) return `${sec} sn`;
-  if (sec < 5_400) return `${Math.ceil(sec / 60)} dk`;
-  return `${Math.ceil(sec / 3600)} sa`;
+  if (sec < 90) return `${sec} s`;
+  if (sec < 5_400) return `${Math.ceil(sec / 60)} min`;
+  return `${Math.ceil(sec / 3600)} h`;
 }
 
 export interface FaucetGuardConfig {
@@ -137,7 +137,7 @@ export class FaucetGuard {
     if (!hit.ok) {
       throw new LimitError(
         429,
-        `Bu cüzdan 24 saatte en fazla ${this.cfg.walletMaxPerDay} kez test USDC alabilir. ${humanDuration(hit.retryAfterSec)} sonra tekrar deneyin.`,
+        `This wallet can receive test USDC at most ${this.cfg.walletMaxPerDay} times in 24 hours. Try again in ${humanDuration(hit.retryAfterSec)}.`,
         hit.retryAfterSec,
       );
     }
@@ -145,7 +145,7 @@ export class FaucetGuard {
     if (!this.usdc.tryConsume(micro)) {
       this.perWallet.undo(wallet);
       const wait = this.usdc.secondsUntilReset();
-      throw new LimitError(503, `Günlük test USDC bütçesi doldu. ${humanDuration(wait)} sonra (UTC gün sınırı) tekrar deneyin.`, wait);
+      throw new LimitError(503, `The daily test USDC budget is used up. Try again in ${humanDuration(wait)} (when the UTC day changes).`, wait);
     }
     return () => {
       this.perWallet.undo(wallet);
@@ -156,7 +156,7 @@ export class FaucetGuard {
   reserveSol(lamports: number): () => void {
     if (!this.sol.tryConsume(lamports)) {
       const wait = this.sol.secondsUntilReset();
-      throw new LimitError(503, `Günlük test SOL bütçesi doldu. ${humanDuration(wait)} sonra (UTC gün sınırı) tekrar deneyin.`, wait);
+      throw new LimitError(503, `The daily test SOL budget is used up. Try again in ${humanDuration(wait)} (when the UTC day changes).`, wait);
     }
     return () => this.sol.refund(lamports);
   }
@@ -168,7 +168,7 @@ export function ipRateLimit(counter: WindowCounter, max: number, windowSec: numb
     const hit = counter.tryHit(`${scope}:${req.ip ?? "bilinmiyor"}`, max, windowSec * 1000);
     if (hit.ok) return next();
     res.set("Retry-After", String(hit.retryAfterSec));
-    res.status(429).json({ error: `Çok sık istek gönderdiniz. ${humanDuration(hit.retryAfterSec)} sonra tekrar deneyin.` });
+    res.status(429).json({ error: `You are sending requests too quickly. Try again in ${humanDuration(hit.retryAfterSec)}.` });
   };
 }
 
