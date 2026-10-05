@@ -3,7 +3,11 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: light;
+  color-scheme: dark;
+  --sig: #8ee05a;
+  --surface: #0e0e0e;
+  --inner: #161616;
+  --hair: rgba(255, 255, 255, 0.12);
 }
 
 html {
@@ -20,31 +24,157 @@ body {
   @apply bg-canvas font-sans text-ink antialiased;
 }
 
-:focus-visible {
-  outline: 2px solid #1d5fa6;
-  outline-offset: 2px;
+h1,
+h2,
+h3,
+h4 {
+  @apply font-display;
+  word-spacing: 0.07em;
 }
 
-/* Cüzdan düğmesi (wallet-adapter) arayüzün diğer düğmeleriyle aynı biçimde. */
+:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+@layer components {
+  /* Hap düğme: imza rengi zemin, siyah yazı. */
+  .btn {
+    @apply inline-flex items-center justify-center rounded-full bg-brand px-6 py-3 text-[15px] font-semibold text-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40;
+  }
+  .btn-lg {
+    @apply px-8 py-4 text-[17px];
+  }
+  .btn-sm {
+    @apply px-5 py-2 text-[14px];
+  }
+  .btn-ghost {
+    @apply border border-white/25 bg-transparent text-white hover:bg-white/10 hover:brightness-100;
+  }
+  .kicker {
+    @apply mb-5 text-[13px] font-semibold uppercase tracking-[0.12em] text-brand;
+  }
+}
+
+/* ---- Cüzdan düğmesi ve penceresi (wallet-adapter), aynı koyu/hap stilinde ---- */
 .wallet-adapter-button-trigger,
 .wallet-adapter-button {
-  font-family: var(--font-sans), system-ui, sans-serif !important;
+  font-family: Satoshi, system-ui, sans-serif !important;
   font-weight: 600 !important;
-  font-size: 14px !important;
-  height: 40px !important;
-  padding: 0 16px !important;
-  border-radius: 10px !important;
-  background-color: #0d1b2a !important;
-  color: #fff !important;
+  font-size: 15px !important;
+  height: 46px !important;
+  padding: 0 24px !important;
+  border-radius: 999px !important;
+  background-color: #8ee05a !important;
+  color: #000 !important;
   line-height: 1 !important;
 }
 .wallet-adapter-button:not([disabled]):hover {
-  background-color: #17293d !important;
+  background-color: #8ee05a !important;
+  filter: brightness(1.1);
+}
+.wallet-adapter-button-start-icon,
+.wallet-adapter-button-end-icon {
+  filter: none;
 }
 .wallet-adapter-dropdown-list {
-  border-radius: 12px !important;
-  font-family: var(--font-sans), system-ui, sans-serif !important;
+  background: #161616 !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  border-radius: 22px !important;
+  padding: 8px !important;
+  font-family: Satoshi, system-ui, sans-serif !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6) !important;
+}
+.wallet-adapter-dropdown-list-item {
+  border-radius: 14px !important;
+  color: #fff !important;
+  font-family: Satoshi, system-ui, sans-serif !important;
+  font-weight: 500 !important;
+}
+.wallet-adapter-dropdown-list-item:not([disabled]):hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.wallet-adapter-modal-overlay {
+  background: rgba(0, 0, 0, 0.72) !important;
+  backdrop-filter: blur(6px);
 }
 .wallet-adapter-modal-wrapper {
-  font-family: var(--font-sans), system-ui, sans-serif !important;
+  background: #0e0e0e !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  border-radius: 28px !important;
+  color: #fff !important;
+  font-family: Satoshi, system-ui, sans-serif !important;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7) !important;
+}
+.wallet-adapter-modal-title {
+  font-family: "Clash Display", Satoshi, system-ui, sans-serif !important;
+  font-weight: 600 !important;
+  color: #fff !important;
+  letter-spacing: -0.02em;
+}
+.wallet-adapter-modal-button-close {
+  background: #1c1c1c !important;
+  border-radius: 999px !important;
+}
+.wallet-adapter-modal-button-close svg {
+  fill: #fff !important;
+}
+.wallet-adapter-modal-list .wallet-adapter-button {
+  background: #161616 !important;
+  color: #fff !important;
+  height: auto !important;
+  min-height: 56px;
+  border-radius: 18px !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  filter: none;
+}
+.wallet-adapter-modal-list .wallet-adapter-button:not([disabled]):hover {
+  background: #202020 !important;
+  border-color: rgba(142, 224, 90, 0.6) !important;
+  filter: none;
+}
+.wallet-adapter-modal-list .wallet-adapter-button-end-icon,
+.wallet-adapter-modal-list .wallet-adapter-button-start-icon {
+  width: 28px;
+  height: 28px;
+}
+.wallet-adapter-modal-list-more {
+  color: #a6a6a6 !important;
+  font-family: Satoshi, system-ui, sans-serif !important;
+}
+.wallet-adapter-modal-middle-button,
+.wallet-adapter-modal-middle .wallet-adapter-button {
+  background: #8ee05a !important;
+  color: #000 !important;
+}
+.wallet-adapter-modal-subtitle,
+.wallet-adapter-modal-content,
+.wallet-adapter-modal-content .wallet-adapter-modal-subtitle {
+  color: #a6a6a6 !important;
+}
+
+/* Açılış animasyonu (en fazla 1 sn); azaltılmış harekette bileşen zaten gösterilmez. */
+.splash {
+  animation: splash-out 0.3s ease-in 0.6s forwards;
+}
+.splash-mark {
+  animation: splash-pop 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.splash-word {
+  animation: splash-fade 0.5s ease-out 0.15s both;
+}
+@keyframes splash-pop {
+  from { transform: scale(0.3) rotate(-18deg); opacity: 0; }
+  to { transform: scale(1) rotate(0); opacity: 1; }
+}
+@keyframes splash-fade {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes splash-out {
+  to { opacity: 0; visibility: hidden; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .splash { display: none; }
 }

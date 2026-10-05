@@ -1,7 +1,7 @@
 "use client";
 
 import { KycBadge } from "@/components/KycBadge";
-import { SproutIcon } from "@/components/icons";
+import { LogoMark } from "@/components/LogoMark";
 import { WalletButton } from "@/components/WalletButton";
 
 const NAV = [
@@ -12,17 +12,15 @@ const NAV = [
 
 export function Header() {
   return (
-    <header className="sticky top-0 z-30 border-b border-line bg-white/85 backdrop-blur">
-      <div className="mx-auto flex h-[60px] max-w-[1160px] items-center gap-4 px-5 sm:h-[68px] sm:gap-6 sm:px-7">
-        <a href="#top" className="flex items-center gap-2.5" aria-label="LUMA home">
-          <span className="grid h-[30px] w-[30px] place-items-center rounded-lg bg-brand text-white">
-            <SproutIcon className="h-[18px] w-[18px]" />
-          </span>
-          <span className="text-[20px] font-bold tracking-[0.14em]">LUMA</span>
+    <header className="sticky top-0 z-30 border-b border-line bg-canvas/80 backdrop-blur-md">
+      <div className="mx-auto flex h-[64px] max-w-[1200px] items-center gap-4 px-5 sm:h-[76px] sm:gap-6 sm:px-8">
+        <a href="#top" className="flex items-center gap-2.5" aria-label="LumaGrow home">
+          <LogoMark className="h-[32px] w-[32px]" />
+          <span className="font-display text-[22px] font-bold tracking-[0.02em]">LumaGrow</span>
         </a>
-        <nav className="ml-3 hidden gap-6 text-sm text-muted md:flex" aria-label="Sections">
+        <nav className="ml-4 hidden gap-8 text-[15px] text-muted md:flex" aria-label="Sections">
           {NAV.map((item) => (
-            <a key={item.href} href={item.href} className="hover:text-ink">
+            <a key={item.href} href={item.href} className="hover:text-white">
               {item.label}
             </a>
           ))}

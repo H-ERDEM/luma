@@ -155,45 +155,45 @@ export function DemoConsole() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-5 right-5 z-30 rounded-[10px] bg-ink px-5 py-3 text-sm font-semibold text-white shadow-lg hover:brightness-110"
+        className="btn fixed bottom-5 right-5 z-30 shadow-[0_10px_40px_rgba(0,0,0,0.6)]"
         aria-expanded={open}
         aria-controls="demo-console"
       >
         Demo console
       </button>
 
-      {open && <div className="fixed inset-0 z-40 bg-ink/30" onClick={() => setOpen(false)} aria-hidden />}
+      {open && <div className="fixed inset-0 z-40 bg-black/70" onClick={() => setOpen(false)} aria-hidden />}
 
       <aside
         id="demo-console"
-        className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col bg-canvas transition-transform duration-300 motion-reduce:transition-none ${
+        className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-line bg-canvas transition-transform duration-300 motion-reduce:transition-none ${
           open ? "translate-x-0 shadow-2xl" : "translate-x-full shadow-none"
         }`}
         aria-hidden={!open}
         aria-label="Demo console"
       >
-        <header className="flex items-center justify-between border-b border-line bg-surface px-6 py-4">
+        <header className="flex items-center justify-between border-b border-line bg-surface px-6 py-5">
           <div>
-            <h2 className="text-xl font-semibold tracking-tight">Demo console</h2>
+            <h2 className="text-[26px] font-semibold tracking-[-0.02em]">Demo console</h2>
             <p className="text-sm text-muted">
               Batch #{state?.addresses.batchId ?? "-"}, day {state?.telemetry.day ?? 0}
             </p>
           </div>
-          <button type="button" onClick={() => setOpen(false)} className="rounded-lg px-3 py-1.5 text-sm font-semibold hover:bg-inner">
+          <button type="button" onClick={() => setOpen(false)} className="rounded-full border border-line-strong px-4 py-1.5 text-sm font-semibold hover:bg-white/10">
             Close
           </button>
         </header>
 
         <ol className="flex-1 space-y-3 overflow-y-auto px-5 py-5 sm:px-6">
           {(closed || unavailable) && (
-            <li role="alert" className="rounded-xl bg-risk-soft p-4 text-sm font-medium text-risk">
+            <li role="alert" className="rounded-2xl border border-line-strong bg-inner p-4 text-sm font-medium text-white">
               {closed ? `${CLOSED_BATCH_MESSAGE} Use “Start new batch” below.` : "Cannot reach the backend, so the batch state is unknown."}
             </li>
           )}
           {steps.map((step, i) => (
-            <li key={step.title} className="rounded-xl border border-line bg-surface p-4">
+            <li key={step.title} className="rounded-3xl border border-line bg-surface p-5">
               <div className="flex gap-3">
-                <span className="grid h-7 w-7 flex-none place-items-center rounded-full bg-brand-soft text-sm font-bold text-brand" aria-hidden>
+                <span className="grid h-7 w-7 flex-none place-items-center rounded-full bg-brand text-sm font-bold text-black" aria-hidden>
                   {i + 1}
                 </span>
                 <div className="min-w-0 flex-1">
@@ -203,7 +203,7 @@ export function DemoConsole() {
                     type="button"
                     disabled={running !== null || closed || unavailable}
                     onClick={() => execute(i, step.run)}
-                    className="mt-3 rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white hover:brightness-110 disabled:opacity-40"
+                    className="btn btn-sm mt-4"
                   >
                     {running === i ? phaseLabel(txPhase, stage ?? "Working…") : "Run"}
                   </button>
@@ -213,7 +213,7 @@ export function DemoConsole() {
             </li>
           ))}
 
-          <li className="rounded-xl border border-dashed border-line-strong p-4 text-sm">
+          <li className="rounded-3xl border border-dashed border-line-strong p-5 text-sm">
             <p className="text-muted">Steps 3 and 4 close the batch. Start a new batch to play another scenario.</p>
             <label htmlFor="reset-token" className="mt-3 block text-xs font-semibold text-muted">
               Admin key (only if required)
@@ -225,7 +225,7 @@ export function DemoConsole() {
               value={resetToken}
               onChange={(e) => updateResetToken(e.target.value)}
               placeholder="Key for starting a new batch"
-              className="mt-1 w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm focus:border-ink focus:outline-none"
+              className="mt-1 w-full rounded-full border border-line-strong bg-canvas px-4 py-2.5 text-sm focus:border-brand focus:outline-none"
             />
             <button
               type="button"
@@ -236,7 +236,7 @@ export function DemoConsole() {
                   pushLog({ text: `Batch #${res.batchId} started`, tone: "info" });
                 })
               }
-              className="mt-2 rounded-lg border border-ink px-4 py-2 font-semibold hover:bg-ink hover:text-white disabled:opacity-40"
+              className="btn btn-sm btn-ghost mt-3"
             >
               {running === -1 ? "Starting…" : "Start new batch"}
             </button>
@@ -249,12 +249,12 @@ export function DemoConsole() {
           ) : (
             <ul className="space-y-1 text-sm">
               {log.map((entry) => (
-                <li key={entry.id} className={entry.tone === "error" ? "text-risk" : entry.tone === "ok" ? "text-ink" : "text-muted"}>
+                <li key={entry.id} className={entry.tone === "error" ? "text-risk" : entry.tone === "ok" ? "text-white" : "text-muted"}>
                   {entry.text}
                   {entry.signature && (
                     <>
                       {" "}
-                      <a href={explorerTx(entry.signature)} target="_blank" rel="noreferrer" className="font-semibold text-info underline-offset-2 hover:underline">
+                      <a href={explorerTx(entry.signature)} target="_blank" rel="noreferrer" className="font-semibold text-brand underline-offset-2 hover:underline">
                         tx ↗
                       </a>
                     </>

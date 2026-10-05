@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { errorText, useLuma } from "@/hooks/useLuma";
+import { ShieldIcon } from "@/components/icons";
 import { PhantomHint } from "@/components/PhantomHint";
 import { withTimeout } from "@/lib/async";
 import { integer, usdc } from "@/lib/format";
@@ -19,8 +20,8 @@ export function Launchpad() {
 
   if (state === null) {
     return (
-      <div className="rounded-card border border-line bg-surface p-6 shadow-card sm:p-7">
-        <h3 className="text-[19px] font-semibold tracking-tight">Back a harvest</h3>
+      <div className="rounded-card border border-line bg-surface p-7 sm:p-9">
+        <h3 className="text-[24px] font-semibold tracking-[-0.02em]">Back a harvest</h3>
         <p className="mt-2 text-sm text-muted">Loading batch data…</p>
       </div>
     );
@@ -52,8 +53,8 @@ export function Launchpad() {
   }
 
   return (
-    <section aria-labelledby="launchpad-title" className="rounded-card border border-line bg-surface p-6 shadow-card sm:p-7">
-      <h3 id="launchpad-title" className="text-[19px] font-semibold tracking-tight">
+    <section aria-labelledby="launchpad-title" className="rounded-card border border-line bg-surface p-7 sm:p-9">
+      <h3 id="launchpad-title" className="text-[24px] font-semibold tracking-[-0.02em]">
         Back a harvest
       </h3>
       <p className="mt-1.5 text-[14.5px] leading-relaxed text-muted">
@@ -78,32 +79,32 @@ export function Launchpad() {
             min={1}
             value={quantity}
             onChange={(e) => setQuantity(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
-            className="mt-1.5 w-[110px] rounded-[9px] border border-line-strong bg-canvas px-3 py-2.5 text-base tabular-nums focus:border-ink focus:outline-none"
+            className="mt-1.5 w-[110px] rounded-2xl border border-line-strong bg-canvas px-4 py-3 text-base tabular-nums focus:border-brand focus:outline-none"
           />
           <button
             type="button"
             disabled={!publicKey || !kycOk || pending !== null}
             onClick={() => run("buy seedlings", `Purchased ${quantity} seedlings`, () => fund(quantity))}
-            className="mt-3.5 w-full rounded-[10px] bg-ink px-4 py-3.5 text-[15px] font-semibold text-white hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-45"
+            className="btn mt-4 w-full"
           >
             {busyText ?? `Pay ${usdc(cost)} USDC and get ${integer(quantity)} ${quantity === 1 ? "seedling" : "seedlings"}`}
           </button>
           {pending !== null && txPhase === "signing" && <PhantomHint />}
           {!publicKey && <p className="mt-2.5 text-center text-[13px] text-muted">Connect your wallet to continue.</p>}
           {publicKey && !kycOk && (
-            <p className="mt-2.5 text-center text-[13px] text-risk">Verify your wallet first: use &ldquo;Get test funds&rdquo; in step 2.</p>
+            <p className="mt-3 text-center text-[13px] text-muted">Verify your wallet first: use &ldquo;Get test funds&rdquo; in step 2.</p>
           )}
         </div>
       )}
 
       {state.status === "Active" && !fundingOpen && !exitOpen && day < state.harvestDay && (
-        <p className="mt-5 rounded-lg bg-inner p-3 text-sm">
+        <p className="mt-5 rounded-2xl bg-inner p-4 text-sm">
           Funding closed on day {state.fundingCloseDay}. Early exit opens on day {state.earlyExitDay}.
         </p>
       )}
 
       {state.status !== "Active" && owned === 0 && (
-        <p className="mt-5 rounded-lg bg-inner p-3 text-sm">
+        <p className="mt-5 rounded-2xl bg-inner p-4 text-sm">
           This batch is closed. To replay the demo, open the Demo console and press &ldquo;Start new batch&rdquo;.
         </p>
       )}
@@ -121,9 +122,9 @@ export function Launchpad() {
       {state.status === "Defaulted" && owned > 0 && (
         <ActionBlock
           title="Insurance refund"
+          shield
           body={`Parametric insurance was triggered. You can reclaim ${usdc(state.refundPrice)} USDC of principal per seedling.`}
           cta={`Claim refund for ${integer(owned)} ${owned === 1 ? "seedling" : "seedlings"}`}
-          tone="risk"
           pending={busyText}
           onClick={() => run("claim the refund", "Principal refund claimed", () => claimRefund(owned))}
         />
@@ -145,9 +146,9 @@ export function Launchpad() {
 
 function Row({ label, value, last = false }: { label: string; value: string; last?: boolean }) {
   return (
-    <div className={`flex justify-between gap-4 py-[9px] ${last ? "" : "border-b border-line"}`}>
+    <div className={`flex justify-between gap-4 py-3 ${last ? "" : "border-b border-line"}`}>
       <dt className="text-muted">{label}</dt>
-      <dd className="font-semibold tabular-nums">{value}</dd>
+      <dd className="font-display text-[17px] font-semibold tabular-nums">{value}</dd>
     </div>
   );
 }
@@ -157,21 +158,21 @@ function ActionBlock(props: {
   body: string;
   cta: string;
   pending: string | null;
-  tone?: "brand" | "risk";
+  shield?: boolean;
   onClick: () => void;
 }) {
-  const risk = props.tone === "risk";
   return (
-    <div className={`mt-5 rounded-xl p-4 ${risk ? "bg-risk-soft" : "bg-brand-soft"}`}>
-      <h4 className="text-[17px] font-semibold tracking-tight">{props.title}</h4>
+    <div className="mt-6 rounded-3xl border border-brand/30 bg-brand-soft p-5">
+      <h4 className="flex items-center gap-2.5 text-[20px] font-semibold tracking-[-0.02em]">
+        {props.shield && <ShieldIcon className="h-6 w-6 text-brand" />}
+        {props.title}
+      </h4>
       <p className="mt-1 text-sm leading-relaxed">{props.body}</p>
       <button
         type="button"
         onClick={props.onClick}
         disabled={props.pending !== null}
-        className={`mt-3 w-full rounded-[10px] px-4 py-3 text-[15px] font-semibold text-white hover:brightness-110 disabled:opacity-45 ${
-          risk ? "bg-risk" : "bg-brand"
-        }`}
+        className="btn mt-4 w-full"
       >
         {props.pending ?? props.cta}
       </button>

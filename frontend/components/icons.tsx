@@ -52,16 +52,3 @@ export const CopyIcon = ({ className }: Props) => (
     <path d="M5 15V6a2 2 0 0 1 2-2h9" />
   </svg>
 );
-
-/** Süs amaçlı botanik çizim (kart köşesi); ekran okuyuculardan gizlidir. */
-export const BotanicalCorner = ({ className }: Props) => (
-  <svg viewBox="0 0 220 220" fill="none" stroke="#0F6B4F" strokeWidth="1.6" strokeLinecap="round" aria-hidden className={className}>
-    <circle cx="120" cy="108" r="96" fill="#EEF3E8" stroke="none" />
-    <path d="M120 200V98" strokeWidth="2.4" />
-    <path d="M120 140c-8-44 14-72 62-80 6 44-16 74-62 80z" fill="#D2E6D6" />
-    <path d="M120 168c8-36-10-60-52-66-6 36 12 62 52 66z" fill="#E1EFE3" />
-    <path d="M120 104c-4-32 10-52 40-60 3 32-10 54-40 60z" fill="#C2DDC9" />
-    <circle cx="178" cy="40" r="7" fill="#F1E1B8" stroke="#B97A22" />
-    <circle cx="52" cy="70" r="5" fill="#F1E1B8" stroke="#B97A22" />
-  </svg>
-);

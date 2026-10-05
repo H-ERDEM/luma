@@ -20,17 +20,17 @@ const STEPS = [
 
 export function HowItWorks() {
   return (
-    <section id="how" aria-labelledby="how-title" className="mx-auto max-w-[1160px] scroll-mt-20 px-5 py-10 sm:px-7">
+    <section id="how" aria-labelledby="how-title" className="mx-auto max-w-[1200px] scroll-mt-20 px-5 py-16 sm:px-8 sm:py-24">
       <SectionHead eyebrow="How it works" title="Three steps from seedling to harvest" id="how-title" />
       <ol className="grid gap-5 md:grid-cols-3">
         {STEPS.map(({ icon: Icon, title, body }, i) => (
-          <li key={title} className="relative rounded-card border border-line border-t-[3px] border-t-brand bg-surface p-6 shadow-card sm:p-7">
-            <span className="absolute right-6 top-5 text-sm text-muted">{i + 1}</span>
-            <div className="mb-[18px] grid h-[46px] w-[46px] place-items-center rounded-xl bg-brand-soft text-brand">
+          <li key={title} className="relative rounded-card border border-line bg-surface p-7 sm:p-9">
+            <span className="absolute right-7 top-6 font-display text-[44px] font-semibold leading-none text-white/15">{i + 1}</span>
+            <div className="mb-8 grid h-[52px] w-[52px] place-items-center rounded-full bg-brand text-black">
               <Icon className="h-6 w-6" />
             </div>
-            <h3 className="text-[19px] font-semibold tracking-tight">{title}</h3>
-            <p className="mt-2 text-[15px] leading-relaxed text-muted">{body}</p>
+            <h3 className="text-[24px] font-semibold tracking-[-0.02em]">{title}</h3>
+            <p className="mt-3 text-[16px] leading-relaxed text-muted">{body}</p>
           </li>
         ))}
       </ol>
@@ -40,12 +40,9 @@ export function HowItWorks() {
 
 export function SectionHead({ eyebrow, title, id, children }: { eyebrow: string; title: string; id: string; children?: React.ReactNode }) {
   return (
-    <div className="mb-7">
-      <p className="mb-3 flex items-center gap-2 text-[12.5px] font-semibold uppercase tracking-[0.09em] text-brand">
-        <span className="h-0.5 w-[18px] bg-brand" aria-hidden />
-        {eyebrow}
-      </p>
-      <h2 id={id} className="max-w-[24ch] text-balance text-[25px] font-semibold leading-tight tracking-[-0.022em] sm:text-[32px]">
+    <div className="mb-12">
+      <p className="kicker">{eyebrow}</p>
+      <h2 id={id} className="max-w-[20ch] text-balance text-[34px] font-semibold leading-[1.04] tracking-[-0.02em] sm:text-[52px]">
         {title}
       </h2>
       {children}
