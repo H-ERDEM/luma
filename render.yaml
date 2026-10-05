@@ -1,0 +1,39 @@
+# Render Blueprint: LUMA backend (Solana devnet demo).
+#
+# Bu dosyada HİÇBİR gizli değer yoktur. `sync: false` olan değişkenlerin değerini Render panelinde
+# (Environment) girin; Blueprint bunları sizden ister ve repoya yazmaz.
+#
+# Not: alan adları (runtime, plan, healthCheckPath, sync) Render'ın Blueprint şemasına göre yazıldı;
+# dağıtımdan önce https://render.com/docs/blueprint-spec ile karşılaştırın.
+services:
+  - type: web
+    name: luma-backend
+    runtime: node
+    plan: free
+    rootDir: backend
+    # NODE_ENV=production iken `npm ci` devDependencies'i atlayabilir; tsc derlemesi için dahil edilir.
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    # Kalıcı disk yok: durum zincirden okunur, anahtarlar ortam değişkenindendir.
+    # /api/live RPC çağrısı yapmaz ve her zaman 200 döner. /api/health ise admin SOL'u düşünce 503
+    # verir; onu Render'a değil, bir uptime izleyicisine (uyarı e-postası için) verin.
+    healthCheckPath: /api/live
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Render bir ters vekil arkasındadır: gerçek istemci IP'si (IP sınırı) için.
+      - key: TRUST_PROXY
+        value: "1"
+      # --- Gizli / ortama özgü değerler: Render panelinden girilir ---
+      - key: RPC_URL # ör. özel devnet RPC adresi (anahtar içerir)
+        sync: false
+      - key: ADMIN_KEYPAIR_JSON # solana-keygen biçimi: 64 sayılık JSON dizisi
+        sync: false
+      - key: DON_KEYPAIR_JSON
+        sync: false
+      - key: FALLBACK_KEYPAIR_JSON
+        sync: false
+      - key: DEMO_RESET_TOKEN # /demo/reset için yönetici anahtarı
+        sync: false
+      - key: FRONTEND_ORIGIN # frontend'in tam adresi (CORS), ör. https://...vercel.app
+        sync: false

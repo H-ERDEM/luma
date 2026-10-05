@@ -5,7 +5,7 @@
 import fs from "fs";
 import path from "path";
 import { createRetryingFetch } from "./rpcFetch";
-import { AnchorProvider, Idl, Program, Wallet } from "@coral-xyz/anchor";
+import { AnchorProvider, BorshInstructionCoder, EventParser, Idl, Program, Wallet } from "@coral-xyz/anchor";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_2022_PROGRAM_ID,
@@ -26,11 +26,13 @@ import {
   SYSVAR_INSTRUCTIONS_PUBKEY,
   SystemProgram,
   Transaction,
+  VersionedTransactionResponse,
   sendAndConfirmTransaction,
 } from "@solana/web3.js";
 import BN from "bn.js";
 import { BATCH_ECONOMICS, env } from "./config";
 import { ProtocolKeys } from "./keys";
+import type { TelemetrySnapshot } from "./store";
 import {
   BatchAddresses,
   Telemetry,
@@ -48,7 +50,7 @@ type Decoded = Record<string, any>;
 function loadIdl(name: string): Idl {
   const file = path.join(env.idlDir, `${name}.json`);
   if (!fs.existsSync(file)) {
-    throw new Error(`IDL bulunamadı: ${file}. Önce kök dizinde 'anchor build' çalıştırın.`);
+    throw new Error(`IDL bulunamadı: ${file}. Depodaki kopyalar backend/idl altındadır; güncellemek için kök dizinde 'anchor build' ve ardından backend'de 'npm run sync-idl' çalıştırın.`);
   }
   return JSON.parse(fs.readFileSync(file, "utf8")) as Idl;
 }
@@ -346,6 +348,75 @@ export class LumaClient {
 
   async fetchBatch(a: BatchAddresses): Promise<Decoded> {
     return this.account("batchVault").fetch(a.batchVault);
+  }
+
+  /**
+   * Parti kurulumu tamam mı? Parti hesabı var, hook ExtraAccountMetaList var ve gün 0 telemetrisi
+   * yazılmış. `createBatch` yarıda kalırsa oluşan yetim parti "hazır" sayılmaz.
+   */
+  async isBatchReady(a: BatchAddresses): Promise<boolean> {
+    const batch = await this.account("batchVault").fetchNullable(a.batchVault);
+    if (batch === null || Number(batch.telemetry.sequence.toString()) < 1) return false;
+    return (await this.connection.getAccountInfo(a.extraAccountMetaList, "confirmed")) !== null;
+  }
+
+  /**
+   * Partinin son telemetri güncellemelerini zincirden yeniden kurar: parti hesabına dokunan
+   * işlemlerde `update_telemetry` talimatı (ölçümler) ve `TelemetryUpdated` olayı (adil değer,
+   * curve fiyatı, kaynak) çözülür. Eskiden diskteki geçmişin yaptığı işi sunucu durumu olmadan yapar.
+   */
+  async recentTelemetry(a: BatchAddresses, limit: number, scan = 60): Promise<TelemetrySnapshot[]> {
+    const sigs = (await this.connection.getSignaturesForAddress(a.batchVault, { limit: 100 }, "confirmed")).filter(
+      (s) => s.err === null,
+    );
+    const parser = new EventParser(this.batchProgram.programId, this.batchProgram.coder);
+    const found: TelemetrySnapshot[] = [];
+    for (let i = 0; i < Math.min(sigs.length, scan) && found.length < limit; i += 5) {
+      const chunk = sigs.slice(i, i + 5);
+      const txs = await Promise.all(
+        chunk.map((s) => this.connection.getTransaction(s.signature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 })),
+      );
+      txs.forEach((tx, j) => {
+        const snapshot = tx === null ? null : this.telemetryFromTransaction(tx, chunk[j].signature, parser);
+        if (snapshot !== null) found.push(snapshot);
+      });
+    }
+    return found.sort((x, y) => (BigInt(x.sequence) < BigInt(y.sequence) ? -1 : 1)).slice(-limit);
+  }
+
+  private telemetryFromTransaction(tx: VersionedTransactionResponse, signature: string, parser: EventParser): TelemetrySnapshot | null {
+    const normalize = (name: string) => name.replace(/_/g, "").toLowerCase();
+    const message = tx.transaction.message;
+    const keys = message.getAccountKeys({ accountKeysFromLookups: tx.meta?.loadedAddresses });
+
+    let payload: Decoded | null = null;
+    for (const ix of message.compiledInstructions) {
+      if (!keys.get(ix.programIdIndex)?.equals(this.batchProgram.programId)) continue;
+      const decoded = (this.batchProgram.coder.instruction as BorshInstructionCoder).decode(Buffer.from(ix.data));
+      if (decoded !== null && normalize(decoded.name) === "updatetelemetry") payload = (decoded.data as Decoded).payload as Decoded;
+    }
+    if (payload === null) return null;
+
+    let event: Decoded | null = null;
+    for (const e of parser.parseLogs(tx.meta?.logMessages ?? [])) {
+      if (normalize(e.name) === "telemetryupdated") event = e.data as Decoded;
+    }
+    if (event === null) return null;
+
+    return {
+      sequence: payload.sequence.toString(),
+      day: Number(payload.day),
+      observedAt: payload.observedAt.toString(),
+      growthFactorBps: Number(payload.growthFactorBps),
+      waterTempCentiC: Number(payload.waterTempCentiC),
+      flowRateMlMin: Number(payload.flowRateMlMin),
+      ecMicroSCm: Number(payload.ecMicroSCm),
+      phCenti: Number(payload.phCenti),
+      fairValue: event.fairValue.toString(),
+      curvePrice: event.curvePrice.toString(),
+      source: pascal(enumKey(event.source)) as TelemetrySnapshot["source"],
+      signature,
+    };
   }
 
   async batchState(a: BatchAddresses, usdcMint: PublicKey) {

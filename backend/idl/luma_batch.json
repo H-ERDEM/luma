@@ -1,0 +1,2431 @@
+{
+  "address": "A7d9dA7vCcVQEoMPVoTgTmNRoRHvPk9VqurhTKWLRGmM",
+  "metadata": {
+    "name": "luma_batch",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "LUMA AgTech batch: Token-2022 proof-of-asset, bonding curve exit, parametric insurance, harvest settlement"
+  },
+  "instructions": [
+    {
+      "name": "claim_default_refund",
+      "discriminator": [
+        112,
+        60,
+        237,
+        64,
+        9,
+        28,
+        158,
+        118
+      ],
+      "accounts": [
+        {
+          "name": "holder",
+          "signer": true
+        },
+        {
+          "name": "batch_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  97,
+                  116,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "batch_vault.batch_id",
+                "account": "BatchVault"
+              }
+            ]
+          },
+          "relations": [
+            "settlement_escrow"
+          ]
+        },
+        {
+          "name": "mint",
+          "writable": true,
+          "relations": [
+            "batch_vault"
+          ]
+        },
+        {
+          "name": "holder_token",
+          "writable": true
+        },
+        {
+          "name": "holder_usdc",
+          "writable": true
+        },
+        {
+          "name": "settlement_escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "batch_vault"
+              }
+            ]
+          },
+          "relations": [
+            "batch_vault"
+          ]
+        },
+        {
+          "name": "escrow_usdc",
+          "writable": true,
+          "relations": [
+            "settlement_escrow"
+          ]
+        },
+        {
+          "name": "usdc_mint",
+          "relations": [
+            "batch_vault"
+          ]
+        },
+        {
+          "name": "token_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        },
+        {
+          "name": "usdc_token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "fund_and_mint",
+      "discriminator": [
+        106,
+        186,
+        75,
+        128,
+        248,
+        16,
+        61,
+        195
+      ],
+      "accounts": [
+        {
+          "name": "buyer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "kyc_registry",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  107,
+                  121,
+                  99
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "buyer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "batch_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  97,
+                  116,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "batch_vault.batch_id",
+                "account": "BatchVault"
+              }
+            ]
+          },
+          "relations": [
+            "settlement_escrow"
+          ]
+        },
+        {
+          "name": "mint",
+          "writable": true,
+          "relations": [
+            "batch_vault"
+          ]
+        },
+        {
+          "name": "buyer_token",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "buyer"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "buyer_usdc",
+          "writable": true
+        },
+        {
+          "name": "settlement_escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "batch_vault"
+              }
+            ]
+          },
+          "relations": [
+            "batch_vault"
+          ]
+        },
+        {
+          "name": "escrow_usdc",
+          "writable": true,
+          "relations": [
+            "settlement_escrow"
+          ]
+        },
+        {
+          "name": "usdc_mint",
+          "relations": [
+            "batch_vault"
+          ]
+        },
+        {
+          "name": "token_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        },
+        {
+          "name": "usdc_token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "quantity",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "fund_reserve",
+      "discriminator": [
+        17,
+        82,
+        71,
+        222,
+        117,
+        210,
+        58,
+        12
+      ],
+      "accounts": [
+        {
+          "name": "funder",
+          "signer": true
+        },
+        {
+          "name": "batch_vault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  97,
+                  116,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "batch_vault.batch_id",
+                "account": "BatchVault"
+              }
+            ]
+          },
+          "relations": [
+            "reserve_vault"
+          ]
+        },
+        {
+          "name": "reserve_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  115,
+                  101,
+                  114,
+                  118,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "batch_vault"
+              }
+            ]
+          },
+          "relations": [
+            "batch_vault"
+          ]
+        },
+        {
+          "name": "reserve_usdc",
+          "writable": true,
+          "relations": [
+            "reserve_vault"
+          ]
+        },
+        {
+          "name": "funder_usdc",
+          "writable": true
+        },
+        {
+          "name": "usdc_mint",
+          "relations": [
+            "batch_vault"
+          ]
+        },
+        {
+          "name": "usdc_token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initialize_batch",
+      "discriminator": [
+        126,
+        44,
+        205,
+        90,
+        220,
+        105,
+        105,
+        193
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "batch_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  97,
+                  116,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.batch_count",
+                "account": "ProtocolConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint",
+          "docs": [
+            "talimatında oluşturulur."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "batch_vault"
+              }
+            ]
+          }
+        },
+        {
+          "name": "usdc_mint",
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "settlement_escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "batch_vault"
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow_usdc",
+          "writable": true
+        },
+        {
+          "name": "reserve_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  115,
+                  101,
+                  114,
+                  118,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "batch_vault"
+              }
+            ]
+          }
+        },
+        {
+          "name": "reserve_usdc",
+          "writable": true
+        },
+        {
+          "name": "usdc_token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "InitializeBatchParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "initialize_batch_mint",
+      "discriminator": [
+        210,
+        117,
+        29,
+        25,
+        198,
+        31,
+        248,
+        145
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "batch_vault"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "batch_vault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  97,
+                  116,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "batch_vault.batch_id",
+                "account": "BatchVault"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  105,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "batch_vault"
+              }
+            ]
+          },
+          "relations": [
+            "batch_vault"
+          ]
+        },
+        {
+          "name": "token_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_config",
+      "discriminator": [
+        208,
+        127,
+        21,
+        1,
+        194,
+        190,
+        196,
+        70
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "usdc_mint"
+        },
+        {
+          "name": "usdc_token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "InitializeConfigParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "redeem_and_burn",
+      "discriminator": [
+        250,
+        89,
+        231,
+        178,
+        86,
+        136,
+        55,
+        96
+      ],
+      "accounts": [
+        {
+          "name": "holder",
+          "signer": true
+        },
+        {
+          "name": "batch_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  97,
+                  116,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "batch_vault.batch_id",
+                "account": "BatchVault"
+              }
+            ]
+          },
+          "relations": [
+            "settlement_escrow"
+          ]
+        },
+        {
+          "name": "mint",
+          "writable": true,
+          "relations": [
+            "batch_vault"
+          ]
+        },
+        {
+          "name": "holder_token",
+          "writable": true
+        },
+        {
+          "name": "holder_usdc",
+          "writable": true
+        },
+        {
+          "name": "settlement_escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "batch_vault"
+              }
+            ]
+          },
+          "relations": [
+            "batch_vault"
+          ]
+        },
+        {
+          "name": "escrow_usdc",
+          "writable": true,
+          "relations": [
+            "settlement_escrow"
+          ]
+        },
+        {
+          "name": "usdc_mint",
+          "relations": [
+            "batch_vault"
+          ]
+        },
+        {
+          "name": "token_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        },
+        {
+          "name": "usdc_token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "sell_to_bonding_curve",
+      "discriminator": [
+        174,
+        231,
+        110,
+        65,
+        136,
+        195,
+        206,
+        141
+      ],
+      "accounts": [
+        {
+          "name": "seller",
+          "signer": true
+        },
+        {
+          "name": "kyc_registry",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  107,
+                  121,
+                  99
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "seller"
+              }
+            ]
+          }
+        },
+        {
+          "name": "batch_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  97,
+                  116,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "batch_vault.batch_id",
+                "account": "BatchVault"
+              }
+            ]
+          },
+          "relations": [
+            "settlement_escrow",
+            "reserve_vault"
+          ]
+        },
+        {
+          "name": "mint",
+          "writable": true,
+          "relations": [
+            "batch_vault"
+          ]
+        },
+        {
+          "name": "seller_token",
+          "writable": true
+        },
+        {
+          "name": "seller_usdc",
+          "writable": true
+        },
+        {
+          "name": "settlement_escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "batch_vault"
+              }
+            ]
+          },
+          "relations": [
+            "batch_vault"
+          ]
+        },
+        {
+          "name": "escrow_usdc",
+          "writable": true,
+          "relations": [
+            "settlement_escrow"
+          ]
+        },
+        {
+          "name": "reserve_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  115,
+                  101,
+                  114,
+                  118,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "batch_vault"
+              }
+            ]
+          },
+          "relations": [
+            "batch_vault"
+          ]
+        },
+        {
+          "name": "reserve_usdc",
+          "writable": true,
+          "relations": [
+            "reserve_vault"
+          ]
+        },
+        {
+          "name": "usdc_mint",
+          "relations": [
+            "batch_vault"
+          ]
+        },
+        {
+          "name": "token_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        },
+        {
+          "name": "usdc_token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "min_usdc_out",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "set_kyc_status",
+      "discriminator": [
+        236,
+        115,
+        89,
+        33,
+        129,
+        57,
+        60,
+        184
+      ],
+      "accounts": [
+        {
+          "name": "kyc_authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "kyc_registry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  107,
+                  121,
+                  99
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "wallet"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "wallet",
+          "type": "pubkey"
+        },
+        {
+          "name": "approved",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "settle_harvest",
+      "discriminator": [
+        73,
+        14,
+        208,
+        42,
+        20,
+        29,
+        55,
+        100
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "batch_vault"
+          ]
+        },
+        {
+          "name": "batch_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  97,
+                  116,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "batch_vault.batch_id",
+                "account": "BatchVault"
+              }
+            ]
+          },
+          "relations": [
+            "settlement_escrow"
+          ]
+        },
+        {
+          "name": "settlement_escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "batch_vault"
+              }
+            ]
+          },
+          "relations": [
+            "batch_vault"
+          ]
+        },
+        {
+          "name": "escrow_usdc",
+          "writable": true,
+          "relations": [
+            "settlement_escrow"
+          ]
+        },
+        {
+          "name": "otc_source_usdc",
+          "docs": [
+            "OTC alıcısından alınan USDC'nin bulunduğu yönetici hesabı."
+          ],
+          "writable": true
+        },
+        {
+          "name": "usdc_mint",
+          "relations": [
+            "batch_vault"
+          ]
+        },
+        {
+          "name": "usdc_token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "otc_usdc_amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "trigger_parametric_default",
+      "discriminator": [
+        243,
+        193,
+        152,
+        3,
+        149,
+        158,
+        187,
+        40
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "signer": true
+        },
+        {
+          "name": "batch_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  97,
+                  116,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "batch_vault.batch_id",
+                "account": "BatchVault"
+              }
+            ]
+          },
+          "relations": [
+            "settlement_escrow"
+          ]
+        },
+        {
+          "name": "settlement_escrow",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "batch_vault"
+              }
+            ]
+          },
+          "relations": [
+            "batch_vault"
+          ]
+        },
+        {
+          "name": "escrow_usdc",
+          "relations": [
+            "settlement_escrow"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "update_config",
+      "discriminator": [
+        29,
+        158,
+        252,
+        191,
+        10,
+        83,
+        219,
+        99
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "UpdateConfigParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "update_telemetry",
+      "discriminator": [
+        19,
+        123,
+        161,
+        112,
+        53,
+        214,
+        59,
+        39
+      ],
+      "accounts": [
+        {
+          "name": "relayer",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "batch_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  97,
+                  116,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "batch_vault.batch_id",
+                "account": "BatchVault"
+              }
+            ]
+          }
+        },
+        {
+          "name": "instructions_sysvar",
+          "docs": [
+            "kilitlenmiştir ve yalnızca `load_*_checked` yardımcılarıyla okunur."
+          ],
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "payload",
+          "type": {
+            "defined": {
+              "name": "TelemetryPayload"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "BatchVault",
+      "discriminator": [
+        172,
+        73,
+        124,
+        34,
+        179,
+        163,
+        59,
+        73
+      ]
+    },
+    {
+      "name": "KycRegistry",
+      "discriminator": [
+        204,
+        241,
+        19,
+        79,
+        46,
+        77,
+        56,
+        20
+      ]
+    },
+    {
+      "name": "ProtocolConfig",
+      "discriminator": [
+        207,
+        91,
+        250,
+        28,
+        152,
+        179,
+        215,
+        209
+      ]
+    },
+    {
+      "name": "ReserveVault",
+      "discriminator": [
+        129,
+        241,
+        32,
+        197,
+        244,
+        142,
+        226,
+        71
+      ]
+    },
+    {
+      "name": "SettlementEscrow",
+      "discriminator": [
+        90,
+        216,
+        22,
+        209,
+        157,
+        153,
+        76,
+        21
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "BatchInitialized",
+      "discriminator": [
+        58,
+        92,
+        144,
+        243,
+        88,
+        74,
+        49,
+        144
+      ]
+    },
+    {
+      "name": "EarlyExitExecuted",
+      "discriminator": [
+        27,
+        153,
+        31,
+        206,
+        23,
+        192,
+        208,
+        244
+      ]
+    },
+    {
+      "name": "HarvestSettled",
+      "discriminator": [
+        176,
+        84,
+        157,
+        61,
+        64,
+        238,
+        233,
+        50
+      ]
+    },
+    {
+      "name": "ParametricDefaultTriggered",
+      "discriminator": [
+        35,
+        89,
+        143,
+        215,
+        206,
+        220,
+        164,
+        63
+      ]
+    },
+    {
+      "name": "SeedlingsFunded",
+      "discriminator": [
+        52,
+        221,
+        106,
+        241,
+        58,
+        205,
+        139,
+        50
+      ]
+    },
+    {
+      "name": "TelemetryUpdated",
+      "discriminator": [
+        116,
+        6,
+        142,
+        215,
+        40,
+        147,
+        102,
+        60
+      ]
+    },
+    {
+      "name": "TokensRedeemed",
+      "discriminator": [
+        45,
+        78,
+        148,
+        246,
+        116,
+        201,
+        3,
+        13
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "KycNotApproved",
+      "msg": "Cüzdan KYC kaydında onaylı değil"
+    },
+    {
+      "code": 6001,
+      "name": "Unauthorized",
+      "msg": "Bu işlem için yetkiniz yok"
+    },
+    {
+      "code": 6002,
+      "name": "UnauthorizedOracle",
+      "msg": "Oracle güncellemesi ne Chainlink DON ne de Ed25519 fallback yetkisiyle doğrulandı"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidEd25519Instruction",
+      "msg": "Önceki talimat geçerli bir Ed25519 doğrulama talimatı değil"
+    },
+    {
+      "code": 6004,
+      "name": "Ed25519AuthorityMismatch",
+      "msg": "Ed25519 imzacısı yapılandırılmış fallback yetkisi değil"
+    },
+    {
+      "code": 6005,
+      "name": "Ed25519MessageMismatch",
+      "msg": "Ed25519 ile imzalanan mesaj telemetri yüküyle eşleşmiyor"
+    },
+    {
+      "code": 6006,
+      "name": "StaleSequence",
+      "msg": "Telemetri sıra numarası son kayıttan büyük olmalı"
+    },
+    {
+      "code": 6007,
+      "name": "StaleTelemetry",
+      "msg": "Telemetri verisi çok eski"
+    },
+    {
+      "code": 6008,
+      "name": "TelemetryFromFuture",
+      "msg": "Telemetri zaman damgası zincir saatinin ilerisinde"
+    },
+    {
+      "code": 6009,
+      "name": "InvalidDay",
+      "msg": "Büyüme günü geriye gidemez veya hasat gününü aşamaz"
+    },
+    {
+      "code": 6010,
+      "name": "InvalidGrowthFactor",
+      "msg": "Büyüme katsayısı B_t 0 ile 10000 bps arasında olmalı"
+    },
+    {
+      "code": 6011,
+      "name": "InvalidTelemetryValue",
+      "msg": "Telemetri sensör değeri fiziksel aralığın dışında"
+    },
+    {
+      "code": 6012,
+      "name": "InsufficientEscrowLiquidity",
+      "msg": "Escrow kasasında yeterli USDC likiditesi yok"
+    },
+    {
+      "code": 6013,
+      "name": "InsufficientExitLiquidity",
+      "msg": "Erken çıkış primi için rezerv likiditesi yetersiz"
+    },
+    {
+      "code": 6014,
+      "name": "SolvencyInvariantViolated",
+      "msg": "Solvency invariantı ihlal edildi: escrow < dolaşımdaki token × ilk birim fiyat"
+    },
+    {
+      "code": 6015,
+      "name": "BatchNotActive",
+      "msg": "Parti aktif değil"
+    },
+    {
+      "code": 6016,
+      "name": "BatchNotDefaulted",
+      "msg": "Parti temerrüt durumunda değil"
+    },
+    {
+      "code": 6017,
+      "name": "BatchNotSettled",
+      "msg": "Parti hasat uzlaşmasını tamamlamadı"
+    },
+    {
+      "code": 6018,
+      "name": "FundingClosed",
+      "msg": "Fonlama penceresi kapandı"
+    },
+    {
+      "code": 6019,
+      "name": "EarlyExitNotOpen",
+      "msg": "Erken çıkış penceresi henüz açılmadı"
+    },
+    {
+      "code": 6020,
+      "name": "EarlyExitClosed",
+      "msg": "Hasat günü geldi; erken çıkış yerine itfa kullanılmalı"
+    },
+    {
+      "code": 6021,
+      "name": "HarvestNotReached",
+      "msg": "Hasat günü henüz gelmedi"
+    },
+    {
+      "code": 6022,
+      "name": "NoDefaultCondition",
+      "msg": "Son telemetride kritik arıza koşulu yok"
+    },
+    {
+      "code": 6023,
+      "name": "CriticalFailurePending",
+      "msg": "Son telemetri kritik arıza bildiriyor; önce parametrik temerrüt tetiklenmeli"
+    },
+    {
+      "code": 6024,
+      "name": "NoTelemetry",
+      "msg": "Henüz hiç telemetri kaydedilmedi"
+    },
+    {
+      "code": 6025,
+      "name": "MaxSupplyExceeded",
+      "msg": "Azami arz aşıldı"
+    },
+    {
+      "code": 6026,
+      "name": "ZeroAmount",
+      "msg": "Miktar sıfırdan büyük olmalı"
+    },
+    {
+      "code": 6027,
+      "name": "SlippageExceeded",
+      "msg": "Ödeme kabul edilen minimum tutarın altında (slippage)"
+    },
+    {
+      "code": 6028,
+      "name": "MathOverflow",
+      "msg": "Aritmetik taşma"
+    },
+    {
+      "code": 6029,
+      "name": "InvalidBatchParams",
+      "msg": "Geçersiz parti parametreleri"
+    },
+    {
+      "code": 6030,
+      "name": "InvalidAuthority",
+      "msg": "Geçersiz yetki anahtarı"
+    }
+  ],
+  "types": [
+    {
+      "name": "BatchInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "batch_vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "batch_id",
+            "type": "u64"
+          },
+          {
+            "name": "unit_price",
+            "type": "u64"
+          },
+          {
+            "name": "max_supply",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BatchStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Active"
+          },
+          {
+            "name": "Defaulted"
+          },
+          {
+            "name": "Settled"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BatchVault",
+      "docs": [
+        "Tek bir üretim partisinin (batch) durumu ve ekonomik parametreleri."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "batch_id",
+            "type": "u64"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "usdc_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "settlement_escrow",
+            "type": "pubkey"
+          },
+          {
+            "name": "reserve_vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "unit_price",
+            "docs": [
+              "Fide başına ilk satış fiyatı (mikro-USDC). Varsayılan 450_000 = 0.45 USDC."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "max_supply",
+            "type": "u64"
+          },
+          {
+            "name": "total_minted",
+            "type": "u64"
+          },
+          {
+            "name": "total_burned",
+            "type": "u64"
+          },
+          {
+            "name": "funding_close_day",
+            "type": "u16"
+          },
+          {
+            "name": "early_exit_day",
+            "type": "u16"
+          },
+          {
+            "name": "harvest_day",
+            "type": "u16"
+          },
+          {
+            "name": "harvest_fee_bps",
+            "docs": [
+              "Hasat itfasında adil değerden kesilen protokol payı (625 bps → 0.76 × 0.9375 = 0.7125)."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "max_telemetry_age_secs",
+            "type": "i64"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "BatchStatus"
+              }
+            }
+          },
+          {
+            "name": "telemetry",
+            "type": {
+              "defined": {
+                "name": "TelemetryPayload"
+              }
+            }
+          },
+          {
+            "name": "last_oracle_source",
+            "type": {
+              "defined": {
+                "name": "OracleSource"
+              }
+            }
+          },
+          {
+            "name": "last_update_ts",
+            "type": "i64"
+          },
+          {
+            "name": "fair_value",
+            "docs": [
+              "Son hesaplanan FV_t (negatif olabilir), mikro-USDC."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "curve_price",
+            "docs": [
+              "Bonding curve fiyatı = max(FV_t, unit_price), mikro-USDC."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "refund_price",
+            "docs": [
+              "Parametrik temerrüt sonrası token başına iade."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "redemption_price",
+            "docs": [
+              "Hasat sonrası token başına itfa."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "mint_bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EarlyExitExecuted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "batch_vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "seller",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "payout",
+            "type": "u64"
+          },
+          {
+            "name": "paid_from_escrow",
+            "type": "u64"
+          },
+          {
+            "name": "paid_from_reserve",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "HarvestSettled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "batch_vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "otc_usdc_amount",
+            "type": "u64"
+          },
+          {
+            "name": "redemption_price",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "InitializeBatchParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "unit_price",
+            "type": "u64"
+          },
+          {
+            "name": "max_supply",
+            "type": "u64"
+          },
+          {
+            "name": "funding_close_day",
+            "type": "u16"
+          },
+          {
+            "name": "early_exit_day",
+            "type": "u16"
+          },
+          {
+            "name": "harvest_day",
+            "type": "u16"
+          },
+          {
+            "name": "harvest_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "max_telemetry_age_secs",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "InitializeConfigParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "kyc_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "don_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "fallback_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "transfer_hook_program",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "KycRegistry",
+      "docs": [
+        "Cüzdan başına KYC kaydı. Transfer hook bu hesabı her transferde okur."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "is_approved",
+            "type": "bool"
+          },
+          {
+            "name": "updated_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OracleSource",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "None"
+          },
+          {
+            "name": "ChainlinkDon"
+          },
+          {
+            "name": "AuthorityEd25519"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ParametricDefaultTriggered",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "batch_vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "water_temp_centi_c",
+            "type": "i16"
+          },
+          {
+            "name": "flow_rate_ml_min",
+            "type": "u32"
+          },
+          {
+            "name": "refund_price",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProtocolConfig",
+      "docs": [
+        "Protokol geneli yapılandırma ve yetki anahtarları."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "kyc_authority",
+            "docs": [
+              "Cüzdanları KYC kaydına onaylayan / reddeden yetki."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "don_authority",
+            "docs": [
+              "Birincil oracle yolu: Chainlink DON raporlarını zincire yazan imzacı."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "fallback_authority",
+            "docs": [
+              "İkincil oracle yolu: backend'in Ed25519 imza anahtarı."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "transfer_hook_program",
+            "docs": [
+              "Basılan her Token-2022 mint'ine bağlanacak transfer hook programı."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "usdc_mint",
+            "docs": [
+              "Kabul edilen tek uzlaşı para birimi (USDC) mint'i."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "batch_count",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReserveVault",
+      "docs": [
+        "Erken çıkış primlerini karşılayan serbest likidite kasası."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "batch_vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "reserve_usdc",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_funded",
+            "type": "u64"
+          },
+          {
+            "name": "total_paid_out",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SeedlingsFunded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "batch_vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "buyer",
+            "type": "pubkey"
+          },
+          {
+            "name": "quantity",
+            "type": "u64"
+          },
+          {
+            "name": "usdc_paid",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SettlementEscrow",
+      "docs": [
+        "Anapara teminat kasası. USDC bakiyesi ilişkili ATA'da (escrow_usdc) tutulur."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "batch_vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "escrow_usdc",
+            "type": "pubkey"
+          },
+          {
+            "name": "principal_deposited",
+            "type": "u64"
+          },
+          {
+            "name": "otc_deposited",
+            "type": "u64"
+          },
+          {
+            "name": "total_paid_out",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TelemetryPayload",
+      "docs": [
+        "Oracle'ın her güncellemede gönderdiği telemetri ve ekonomik girdiler.",
+        "Tüm parasal değerler mikro-USDC (1 USDC = 1_000_000) cinsindendir."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "sequence",
+            "docs": [
+              "Tekrar oynatma (replay) koruması için kesin artan sıra numarası."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "observed_at",
+            "docs": [
+              "Ölçümün Unix zaman damgası (saniye)."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "day",
+            "docs": [
+              "Büyüme döngüsündeki gün (0..=harvest_day)."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "growth_factor_bps",
+            "docs": [
+              "B_t: biyolojik ilerleme katsayısı, baz puan (0..=10_000)."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "est_yield_grams",
+            "docs": [
+              "Q_est: fide başına beklenen hasat, gram."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "market_price_per_kg",
+            "docs": [
+              "P_market: kg başına piyasa fiyatı, mikro-USDC."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "remaining_cost",
+            "docs": [
+              "C_rem: fide başına kalan üretim maliyeti, mikro-USDC."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "risk_premium",
+            "docs": [
+              "RP_t: fide başına risk primi, mikro-USDC."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "water_temp_centi_c",
+            "docs": [
+              "Su sıcaklığı, santi-°C (3250 = 32.50 °C)."
+            ],
+            "type": "i16"
+          },
+          {
+            "name": "flow_rate_ml_min",
+            "docs": [
+              "Besin çözeltisi akış hızı, ml/dk. 0 = akış yok."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "ec_micro_s_cm",
+            "docs": [
+              "Elektriksel iletkenlik, µS/cm."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "ph_centi",
+            "docs": [
+              "pH, centi birimi (620 = 6.20)."
+            ],
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TelemetryUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "batch_vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "sequence",
+            "type": "u64"
+          },
+          {
+            "name": "day",
+            "type": "u16"
+          },
+          {
+            "name": "source",
+            "type": {
+              "defined": {
+                "name": "OracleSource"
+              }
+            }
+          },
+          {
+            "name": "fair_value",
+            "type": "i64"
+          },
+          {
+            "name": "curve_price",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokensRedeemed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "batch_vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "holder",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "payout",
+            "type": "u64"
+          },
+          {
+            "name": "default_refund",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UpdateConfigParams",
+      "docs": [
+        "Yetki anahtarlarının rotasyonu (ör. ele geçirilmiş fallback anahtarı veya yeni DON imzacısı)."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "kyc_authority",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "don_authority",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "fallback_authority",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "new_admin",
+            "type": {
+              "option": "pubkey"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -39,7 +39,7 @@ function telemetryFeed(ctx: AppContext, state: BatchStateSnapshot) {
       phCenti: live.phCenti,
       observedAt: live.observedAt.toString(),
     },
-    history: ctx.store.history(a.batchId),
+    history: ctx.telemetryHistory(a.batchId),
     curve: theoreticalCurve(BigInt(state.unitPrice)),
   };
 }
@@ -63,8 +63,25 @@ export function createApp(ctx: AppContext) {
       }
     };
 
+  /** Zincirden okunan durum (USDC mint'i, aktif parti, geçmiş) hazır olana kadar API isteklerini bekletir. */
+  app.use(async (req, res, next) => {
+    if (req.path === "/api/live" || req.path === "/api/health" || req.method === "OPTIONS") return next();
+    try {
+      await ctx.ensureReady();
+      next();
+    } catch (err) {
+      const { message } = describeError(err);
+      res.status(503).json({ error: `Zincir durumu okunamadı, birkaç saniye sonra tekrar deneyin. (${message})` });
+    }
+  });
+
   const rateCounter = new WindowCounter();
   const mutationLimit = (scope: string) => ipRateLimit(rateCounter, limits.rateLimitMax, limits.rateLimitWindowSec, scope);
+
+  /** Süreç canlı mı? Hiçbir RPC çağrısı yapmaz; barındırıcının (Render) sağlık kontrolü için. */
+  app.get("/api/live", (_req, res) => {
+    res.json({ ok: true });
+  });
 
   /** Canlılık + admin SOL durumu: admin eşiğin altındaysa 503 (dışarıdan bir uptime izleyicisi uyarı verebilir). */
   app.get("/api/health", async (_req, res) => {
@@ -136,8 +153,16 @@ export function createApp(ctx: AppContext) {
 }
 
 if (require.main === module) {
-  const ctx = new AppContext();
-  createApp(ctx).listen(env.port, () => {
-    console.log(`LUMA backend http://localhost:${env.port} (RPC: ${maskRpcUrl(env.rpcUrl)})`);
+  (async () => {
+    const ctx = new AppContext(); // anahtarlar eksik/geçersizse burada açık bir hatayla durur
+    await ctx.verifyKeys(); // üretimde zincirdeki config ile uyuşmayan anahtarla başlamayı reddeder
+    createApp(ctx).listen(env.port, () => {
+      console.log(`LUMA backend http://localhost:${env.port} (RPC: ${maskRpcUrl(env.rpcUrl)})`);
+    });
+    // Zincir durumunu ilk istekten önce ısıt; başarısız olursa ilk istek yeniden dener.
+    void ctx.ensureReady().catch((err) => console.warn(`Zincir durumu henüz okunamadı: ${describeError(err).message}`));
+  })().catch((err) => {
+    console.error(describeError(err).message);
+    process.exit(1);
   });
 }
