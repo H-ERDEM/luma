@@ -1,4 +1,4 @@
-# LUMA — AgTech Canlı Varlık Kanıtı (Proof-of-Asset) ve Token-2022
+# LumaGrow — AgTech Canlı Varlık Kanıtı (Proof-of-Asset) ve Token-2022
 
 ## Try it live
 
@@ -6,7 +6,7 @@
 
 **Live demo: https://luma-ten-pearl.vercel.app** (Solana **Devnet**, no real funds involved)
 
-LUMA tokenizes 40-day hydroponic lettuce batches. One token is one seedling, priced at 0.45 USDC, and every USDC paid stays locked in a collateral vault. You can exit early on a bonding curve, claim your principal back if the sensors report a critical failure (parametric insurance), or redeem at harvest. The demo console plays the whole 40-day cycle in a few clicks, and each step is a real transaction on Devnet.
+LumaGrow tokenizes 40-day hydroponic lettuce batches. One token is one seedling, priced at 0.45 USDC, and every USDC paid stays locked in a collateral vault. You can exit early on a bonding curve, claim your principal back if the sensors report a critical failure (parametric insurance), or redeem at harvest. The demo console plays the whole 40-day cycle in a few clicks, and each step is a real transaction on Devnet.
 
 On-chain: [`luma_batch`](https://explorer.solana.com/address/A7d9dA7vCcVQEoMPVoTgTmNRoRHvPk9VqurhTKWLRGmM?cluster=devnet) and [`luma_transfer_hook`](https://explorer.solana.com/address/H1vq1NJ4wm4WwPchrChCf4a2MbDABdNya2rusQ7qtj4z?cluster=devnet) (Token-2022 transfer hook for KYC-gated transfers).
 
