@@ -6,6 +6,7 @@ import { explorerTx } from "@/lib/env";
 import { usdc } from "@/lib/format";
 import { errorText, useLuma } from "@/hooks/useLuma";
 import { withTimeout } from "@/lib/async";
+import { describeFaucet, SOL_SKIPPED_MESSAGE } from "@/lib/faucetMessages";
 import { CLOSED_BATCH_MESSAGE, phaseLabel } from "@/lib/txPhase";
 import { PhantomHint } from "@/components/PhantomHint";
 
@@ -21,10 +22,10 @@ interface Step {
 }
 
 /**
- * Jüri konsolu: 40 günlük döngüyü dört adımda oynatır. Backend zaman makinesi oracle
+ * Demo console: 40 günlük döngüyü dört adımda oynatır. Backend zaman makinesi oracle
  * güncellemelerini zincire yazar; yatırımcı adımları bağlı cüzdanla imzalanır.
  */
-export function JuryAdminDrawer() {
+export function DemoConsole() {
   const { publicKey, state, fetchHoldings, fund, sell, claimRefund, redeem, refresh, pushLog, log, txPhase } = useLuma();
   const [open, setOpen] = useState(false);
   const [running, setRunning] = useState<number | null>(null);
@@ -51,7 +52,7 @@ export function JuryAdminDrawer() {
   const unavailable = state === null;
 
   const requireWallet = () => {
-    if (!publicKey) throw new Error("Önce cüzdanınızı bağlayın.");
+    if (!publicKey) throw new Error("Connect your wallet first.");
     return publicKey.toBase58();
   };
 
@@ -63,76 +64,70 @@ export function JuryAdminDrawer() {
 
   const steps: Step[] = [
     {
-      title: "Fide fonla",
-      detail: `Cüzdanı KYC'den geçirir, test USDC bakiyenizi üst sınıra (100) tamamlar ve ${DEMO_QUANTITY} fide satın alır.`,
+      title: "Fund seedlings",
+      detail: `Verifies your wallet, tops your test USDC up to the limit (100) and buys ${DEMO_QUANTITY} seedlings.`,
       run: async () => {
         const wallet = requireWallet();
         await requireActiveBatch();
-        setStage("KYC ve test USDC hazırlanıyor…");
+        setStage("Preparing KYC and test USDC…");
         const kyc = await api.verifyKyc(wallet);
         pushLog({
-          text: kyc.alreadyApproved ? "KYC zaten onaylı" : "KYC onaylandı",
+          text: kyc.alreadyApproved ? "KYC already approved" : "KYC approved",
           tone: "ok",
           signature: kyc.signature ?? undefined,
         });
         const faucet = await api.faucet(wallet);
-        pushLog({
-          text:
-            faucet.minted === "0"
-              ? `USDC bakiyeniz zaten üst sınırda (${usdc(faucet.cap)}); yeni USDC yüklenmedi`
-              : `${usdc(faucet.minted)} test USDC yüklendi (bakiye ${usdc(faucet.balance)})`,
-          tone: "info",
-        });
+        pushLog({ text: describeFaucet(faucet), tone: "info" });
         if (faucet.solSkipped) {
-          pushLog({ text: "SOL desteği şu an kapalı (yönetici cüzdanında SOL azaldı); işlem ücreti için SOL'unuz yetmeyebilir.", tone: "info" });
+          pushLog({ text: SOL_SKIPPED_MESSAGE, tone: "info" });
         }
         const sig = await fund(DEMO_QUANTITY);
-        pushLog({ text: `${DEMO_QUANTITY} fide satın alındı`, tone: "ok", signature: sig });
+        pushLog({ text: `Purchased ${DEMO_QUANTITY} seedlings`, tone: "ok", signature: sig });
       },
     },
     {
-      title: "Günü 20'ye ilerlet ve erken çık",
-      detail: "Oracle 5, 10, 15 ve 20. gün ölçümlerini DON ve Ed25519 yollarından yazar; ardından fidelerin yarısı curve'e satılır.",
+      title: "Advance to day 20 and exit early",
+      detail: "The oracle writes readings for days 5, 10, 15 and 20 through the DON and Ed25519 paths, then half of your seedlings are sold to the curve.",
       run: async () => {
         await requireActiveBatch();
-        setStage("Oracle ölçümleri zincire yazılıyor…");
+        setStage("Writing oracle readings on-chain…");
         await api.advanceDays(20);
-        pushLog({ text: "20. güne gelindi, curve fiyatı güncellendi", tone: "info" });
+        pushLog({ text: "Reached day 20, curve price updated", tone: "info" });
         const half = Math.floor(Number(await fetchHoldings()) / 2);
         if (half < 1) {
-          pushLog({ text: "Satılacak fide yok; önce 1. adımı çalıştırın.", tone: "info" });
+          pushLog({ text: "No seedlings to sell; run step 1 first.", tone: "info" });
           return;
         }
         const sig = await sell(half);
-        pushLog({ text: `${half} fide erken çıkışla satıldı`, tone: "ok", signature: sig });
+        pushLog({ text: `Sold ${half} seedlings through early exit`, tone: "ok", signature: sig });
       },
     },
     {
-      title: "Arıza yarat ve sigortayı incele",
-      detail: "Su 33,5 °C'ye çıkar, pompa durur. Parametrik sigorta tetiklenir ve kalan fideler için anapara iadesi alınır.",
+      title: "Trigger a failure and see the insurance",
+      detail: "Water rises to 33.5 °C and the pump stops. Parametric insurance triggers and you reclaim the principal for your remaining seedlings.",
       run: async () => {
         await requireActiveBatch();
-        setStage("Arıza simüle ediliyor…");
+        setStage("Simulating the failure…");
         const res = await api.triggerOutage();
-        pushLog({ text: `Sigorta tetiklendi, iade ${usdc(res.refundPrice)} USDC/fide`, tone: "ok", signature: res.signature });
+        pushLog({ text: `Insurance triggered, refund ${usdc(res.refundPrice)} USDC per seedling`, tone: "ok", signature: res.signature });
         const owned = Number(await fetchHoldings());
         if (owned < 1) return;
         const sig = await claimRefund(owned);
-        pushLog({ text: `${owned} fide için anapara iade edildi`, tone: "ok", signature: sig });
+        pushLog({ text: `Principal refunded for ${owned} seedlings`, tone: "ok", signature: sig });
       },
     },
     {
-      title: "Hasadı bitir, token yak ve itfa et",
-      detail: "40. gün ölçümü yazılır, OTC alıcısının USDC'si kasaya yatar ve kalan fideler 0,7125 USDC'den itfa edilip yakılır.",
+      title: "Harvest, burn and redeem",
+      detail: "The day-40 reading is written, the OTC buyer's USDC goes into the vault, and your remaining seedlings are redeemed at 0.7125 USDC and burned.",
       run: async () => {
         await requireActiveBatch();
-        setStage("Hasat uzlaştırılıyor…");
+        setStage("Settling the harvest…");
         const res = await api.settleHarvest();
-        pushLog({ text: `Hasat uzlaştı, itfa ${usdc(res.redemptionPrice, 4)} USDC/fide`, tone: "ok", signature: res.signature });
+        pushLog({ text: `Harvest settled, redemption ${usdc(res.redemptionPrice, 4)} USDC per seedling`, tone: "ok", signature: res.signature });
         const owned = Number(await fetchHoldings());
         if (owned < 1) return;
         const sig = await redeem(owned);
-        pushLog({ text: `${owned} fide yakıldı ve itfa edildi`, tone: "ok", signature: sig });
+        pushLog({ text: `Burned and redeemed ${owned} seedlings`, tone: "ok", signature: sig });
       },
     },
   ];
@@ -144,7 +139,7 @@ export function JuryAdminDrawer() {
       await withTimeout(
         task(),
         STEP_TIMEOUT_MS,
-        "Adım 3 dakikada tamamlanmadı. Phantom'da onay bekleyen bir istek varsa reddedin; onay penceresi açılmadıysa Phantom yan panelini kapatıp tekrar deneyin.",
+        "This step took longer than 3 minutes. If an approval request is pending in Phantom, reject it; if no approval window opened, close Phantom's side panel and try again.",
       );
     } catch (err) {
       pushLog({ text: errorText(err), tone: "error" });
@@ -160,57 +155,57 @@ export function JuryAdminDrawer() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-5 right-5 z-30 rounded-full bg-ink px-5 py-3 font-medium text-paper shadow-lg hover:bg-leaf-deep"
+        className="fixed bottom-5 right-5 z-30 rounded-[10px] bg-ink px-5 py-3 text-sm font-semibold text-white shadow-lg hover:brightness-110"
         aria-expanded={open}
-        aria-controls="jury-drawer"
+        aria-controls="demo-console"
       >
-        Jüri konsolu
+        Demo console
       </button>
 
       {open && <div className="fixed inset-0 z-40 bg-ink/30" onClick={() => setOpen(false)} aria-hidden />}
 
       <aside
-        id="jury-drawer"
-        className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col bg-paper shadow-2xl transition-transform duration-300 motion-reduce:transition-none ${
-          open ? "translate-x-0" : "translate-x-full"
+        id="demo-console"
+        className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col bg-canvas transition-transform duration-300 motion-reduce:transition-none ${
+          open ? "translate-x-0 shadow-2xl" : "translate-x-full shadow-none"
         }`}
         aria-hidden={!open}
-        aria-label="Jüri demo konsolu"
+        aria-label="Demo console"
       >
-        <header className="flex items-center justify-between border-b border-line px-6 py-4">
+        <header className="flex items-center justify-between border-b border-line bg-surface px-6 py-4">
           <div>
-            <h2 className="font-display text-xl font-semibold">Jüri konsolu</h2>
+            <h2 className="text-xl font-semibold tracking-tight">Demo console</h2>
             <p className="text-sm text-muted">
-              Parti #{state?.addresses.batchId ?? "-"}, {state?.telemetry.day ?? 0}. gün
+              Batch #{state?.addresses.batchId ?? "-"}, day {state?.telemetry.day ?? 0}
             </p>
           </div>
-          <button type="button" onClick={() => setOpen(false)} className="rounded-full px-3 py-1 text-sm hover:bg-line">
-            Kapat
+          <button type="button" onClick={() => setOpen(false)} className="rounded-lg px-3 py-1.5 text-sm font-semibold hover:bg-inner">
+            Close
           </button>
         </header>
 
-        <ol className="flex-1 space-y-3 overflow-y-auto px-6 py-5">
+        <ol className="flex-1 space-y-3 overflow-y-auto px-5 py-5 sm:px-6">
           {(closed || unavailable) && (
-            <li role="alert" className="rounded-xl bg-heat-soft p-4 text-sm font-medium">
-              {closed ? CLOSED_BATCH_MESSAGE : "Backend'e ulaşılamıyor; durum okunamadı."}
+            <li role="alert" className="rounded-xl bg-risk-soft p-4 text-sm font-medium text-risk">
+              {closed ? `${CLOSED_BATCH_MESSAGE} Use “Start new batch” below.` : "Cannot reach the backend, so the batch state is unknown."}
             </li>
           )}
           {steps.map((step, i) => (
-            <li key={step.title} className="rounded-xl border border-line bg-white p-4">
+            <li key={step.title} className="rounded-xl border border-line bg-surface p-4">
               <div className="flex gap-3">
-                <span className="font-display text-2xl font-semibold text-leaf" aria-hidden>
+                <span className="grid h-7 w-7 flex-none place-items-center rounded-full bg-brand-soft text-sm font-bold text-brand" aria-hidden>
                   {i + 1}
                 </span>
-                <div className="flex-1">
-                  <h3 className="font-medium">{step.title}</h3>
-                  <p className="mt-0.5 text-sm text-muted">{step.detail}</p>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-semibold">{step.title}</h3>
+                  <p className="mt-0.5 text-sm leading-relaxed text-muted">{step.detail}</p>
                   <button
                     type="button"
                     disabled={running !== null || closed || unavailable}
                     onClick={() => execute(i, step.run)}
-                    className="mt-3 rounded-lg bg-ink px-4 py-1.5 text-sm font-medium text-paper hover:bg-leaf-deep disabled:opacity-40"
+                    className="mt-3 rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white hover:brightness-110 disabled:opacity-40"
                   >
-                    {running === i ? phaseLabel(txPhase, stage ?? "Çalışıyor…") : "Çalıştır"}
+                    {running === i ? phaseLabel(txPhase, stage ?? "Working…") : "Run"}
                   </button>
                   {running === i && txPhase === "signing" && <PhantomHint />}
                 </div>
@@ -218,10 +213,10 @@ export function JuryAdminDrawer() {
             </li>
           ))}
 
-          <li className="rounded-xl border border-dashed border-line p-4 text-sm">
-            <p className="text-muted">3. ve 4. adımlar partiyi kapatır. Diğer senaryo için yeni bir parti başlatın.</p>
-            <label htmlFor="reset-token" className="mt-3 block text-xs font-medium text-muted">
-              Yönetici anahtarı (yalnızca gerekiyorsa)
+          <li className="rounded-xl border border-dashed border-line-strong p-4 text-sm">
+            <p className="text-muted">Steps 3 and 4 close the batch. Start a new batch to play another scenario.</p>
+            <label htmlFor="reset-token" className="mt-3 block text-xs font-semibold text-muted">
+              Admin key (only if required)
             </label>
             <input
               id="reset-token"
@@ -229,8 +224,8 @@ export function JuryAdminDrawer() {
               autoComplete="off"
               value={resetToken}
               onChange={(e) => updateResetToken(e.target.value)}
-              placeholder="Yeni parti için anahtar"
-              className="mt-1 w-full rounded-lg border border-line px-3 py-1.5 text-sm focus:border-ink focus:outline-none"
+              placeholder="Key for starting a new batch"
+              className="mt-1 w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm focus:border-ink focus:outline-none"
             />
             <button
               type="button"
@@ -238,29 +233,29 @@ export function JuryAdminDrawer() {
               onClick={() =>
                 execute(-1, async () => {
                   const res = await api.reset(resetToken.trim() || undefined);
-                  pushLog({ text: `Parti #${res.batchId} başlatıldı`, tone: "info" });
+                  pushLog({ text: `Batch #${res.batchId} started`, tone: "info" });
                 })
               }
-              className="mt-2 rounded-lg border border-ink px-4 py-1.5 font-medium hover:bg-ink hover:text-paper disabled:opacity-40"
+              className="mt-2 rounded-lg border border-ink px-4 py-2 font-semibold hover:bg-ink hover:text-white disabled:opacity-40"
             >
-              {running === -1 ? "Kuruluyor…" : "Yeni parti başlat"}
+              {running === -1 ? "Starting…" : "Start new batch"}
             </button>
           </li>
         </ol>
 
-        <section className="max-h-56 overflow-y-auto border-t border-line px-6 py-4" aria-live="polite" aria-label="İşlem günlüğü">
+        <section className="max-h-56 overflow-y-auto border-t border-line bg-surface px-6 py-4" aria-live="polite" aria-label="Activity log">
           {log.length === 0 ? (
-            <p className="text-sm text-muted">İşlemler burada görünecek.</p>
+            <p className="text-sm text-muted">Transactions will appear here.</p>
           ) : (
             <ul className="space-y-1 text-sm">
               {log.map((entry) => (
-                <li key={entry.id} className={entry.tone === "error" ? "text-heat" : entry.tone === "ok" ? "text-ink" : "text-muted"}>
+                <li key={entry.id} className={entry.tone === "error" ? "text-risk" : entry.tone === "ok" ? "text-ink" : "text-muted"}>
                   {entry.text}
                   {entry.signature && (
                     <>
                       {" "}
-                      <a href={explorerTx(entry.signature)} target="_blank" rel="noreferrer" className="text-solution underline">
-                        işlem
+                      <a href={explorerTx(entry.signature)} target="_blank" rel="noreferrer" className="font-semibold text-info underline-offset-2 hover:underline">
+                        tx ↗
                       </a>
                     </>
                   )}

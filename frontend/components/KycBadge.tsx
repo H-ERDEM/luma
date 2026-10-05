@@ -3,25 +3,21 @@
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { errorText, useLuma } from "@/hooks/useLuma";
+import { CopyIcon } from "@/components/icons";
 
-/** Bağlı cüzdanın zincir üstü KycRegistry durumunu canlı gösterir. */
+/** Bağlı cüzdanın zincir üstü KycRegistry durumunu gösterir. */
 export function KycBadge() {
   const { publicKey, kyc, refresh, pushLog } = useLuma();
   const [pending, setPending] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  if (!publicKey) {
-    return <span className="text-sm text-muted">Cüzdan bağlı değil</span>;
-  }
+  if (!publicKey) return null;
 
   const base58 = publicKey.toBase58();
-  const shortAddress = `${base58.slice(0, 4)}…${base58.slice(-4)}`;
 
   const copyAddress = async () => {
     try {
       await navigator.clipboard.writeText(base58);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     } catch {
       const el = document.createElement("textarea");
       el.value = base58;
@@ -29,9 +25,9 @@ export function KycBadge() {
       el.select();
       document.execCommand("copy");
       document.body.removeChild(el);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const approved = kyc?.approved === true;
@@ -42,49 +38,48 @@ export function KycBadge() {
     try {
       const { signature, alreadyApproved } = await api.verifyKyc(publicKey.toBase58());
       pushLog({
-        text: alreadyApproved ? "KYC kaydınız zaten onaylı" : "KYC kaydı zincirde onaylandı",
+        text: alreadyApproved ? "Your KYC record is already approved" : "KYC record approved on-chain",
         tone: "ok",
         signature: signature ?? undefined,
       });
       await refresh();
     } catch (err) {
-      pushLog({ text: `KYC doğrulanamadı: ${errorText(err)}`, tone: "error" });
+      pushLog({ text: `Could not verify KYC: ${errorText(err)}`, tone: "error" });
     } finally {
       setPending(false);
     }
   }
 
   return (
-    <div className="flex items-center gap-2" aria-live="polite">
+    <div className="hidden items-center gap-2 md:flex" aria-live="polite">
       <span
-        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium ${
-          approved ? "bg-leaf-soft text-leaf-deep" : "bg-heat-soft text-heat"
+        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-semibold ${
+          approved ? "bg-brand-soft text-brand" : kyc === null ? "bg-inner text-muted" : "bg-risk-soft text-risk"
         }`}
       >
-        <span className={`h-2 w-2 rounded-full ${approved ? "bg-leaf" : "bg-heat"}`} aria-hidden />
-        {kyc === null ? "KYC kontrol ediliyor" : approved ? "KYC onaylı" : "KYC onayı yok"}
+        <span className={`h-1.5 w-1.5 rounded-full ${approved ? "bg-brand" : kyc === null ? "bg-muted" : "bg-risk"}`} aria-hidden />
+        {kyc === null ? "Checking KYC…" : approved ? "KYC approved" : "KYC required"}
       </span>
       {kyc !== null && !approved && (
         <button
           type="button"
           onClick={verify}
           disabled={pending}
-          className="rounded-full border border-ink px-3 py-1 text-sm font-medium hover:bg-ink hover:text-paper disabled:opacity-50"
+          className="rounded-lg border border-line-strong px-3 py-1.5 text-[13px] font-semibold hover:bg-inner disabled:opacity-50"
         >
-          {pending ? "Doğrulanıyor…" : "Kimliği doğrula"}
+          {pending ? "Verifying…" : "Verify identity"}
         </button>
       )}
-      <div className="inline-flex items-center gap-1 rounded-full border border-line bg-paper px-2.5 py-1 text-xs font-mono text-ink">
-        <span title={base58}>{shortAddress}</span>
-        <button
-          type="button"
-          onClick={copyAddress}
-          className="ml-1 rounded px-1.5 py-0.5 text-xs text-muted hover:bg-line/50 hover:text-ink transition-colors"
-          title="Cüzdan adresini kopyala"
-        >
-          {copied ? "Kopyalandı!" : "Kopyala"}
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={copyAddress}
+        className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[13px] text-muted hover:bg-inner hover:text-ink"
+        title="Copy wallet address"
+        aria-label="Copy wallet address"
+      >
+        <CopyIcon className="h-4 w-4" />
+        {copied ? "Copied" : null}
+      </button>
     </div>
   );
 }

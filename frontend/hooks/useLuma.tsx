@@ -4,6 +4,7 @@ import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, 
 import { AnchorWallet, useAnchorWallet, useConnection } from "@solana/wallet-adapter-react";
 import { PublicKey, Transaction, VersionedTransaction } from "@solana/web3.js";
 import { api, BatchState, KycStatus, TelemetryFeed } from "@/lib/api";
+import { PROGRAM_ERRORS, programErrorCode } from "@/lib/errors";
 import type { TxPhase } from "@/lib/txPhase";
 import {
   assetAta,
@@ -185,7 +186,7 @@ export function LumaProvider({ children }: { children: ReactNode }) {
 
   const withProgram = useCallback(
     async (task: (args: { program: Awaited<ReturnType<typeof loadProgram>>; state: BatchState }) => Promise<string>) => {
-      if (!wallet) throw new Error("Önce cüzdanınızı bağlayın.");
+      if (!wallet) throw new Error("Connect your wallet first.");
       setTxPhase("preparing");
       try {
         const fresh = await api.batchState(true);
@@ -254,16 +255,18 @@ export function LumaProvider({ children }: { children: ReactNode }) {
 
 export function useLuma(): LumaContextValue {
   const ctx = useContext(LumaContext);
-  if (ctx === null) throw new Error("useLuma, LumaProvider içinde kullanılmalı");
+  if (ctx === null) throw new Error("useLuma must be used inside LumaProvider");
   return ctx;
 }
 
 export function errorText(err: unknown): string {
+  const code = programErrorCode(err);
+  if (code !== null && PROGRAM_ERRORS[code] !== undefined) return PROGRAM_ERRORS[code];
   const e = err as { error?: { errorMessage?: string }; message?: string };
   const text = e.error?.errorMessage ?? e.message ?? String(err);
   // RPC hız sınırı: ham HTTP hatası yerine ne yapılacağını söyle.
   if (/\b429\b|too many requests/i.test(text)) {
-    return "RPC şu an yoğun (429). Birkaç saniye bekleyip tekrar deneyin.";
+    return "The RPC is busy right now. Wait a few seconds and try again.";
   }
   return text;
 }
