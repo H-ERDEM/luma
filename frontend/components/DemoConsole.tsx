@@ -216,7 +216,7 @@ export function DemoConsole() {
           <li className="rounded-3xl border border-dashed border-line-strong p-5 text-sm">
             <p className="text-muted">Steps 3 and 4 close the batch. Start a new batch to play another scenario.</p>
             <label htmlFor="reset-token" className="mt-3 block text-xs font-semibold text-muted">
-              Admin key (only if required)
+              Judge access key (provided in the submission)
             </label>
             <input
               id="reset-token"
@@ -224,7 +224,7 @@ export function DemoConsole() {
               autoComplete="off"
               value={resetToken}
               onChange={(e) => updateResetToken(e.target.value)}
-              placeholder="Key for starting a new batch"
+              placeholder="Paste the key from the submission form"
               className="mt-1 w-full rounded-full border border-line-strong bg-canvas px-4 py-2.5 text-sm focus:border-brand focus:outline-none"
             />
             <button
