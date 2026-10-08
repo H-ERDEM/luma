@@ -136,7 +136,7 @@ export function createSimulatorRouter(ctx: AppContext): Router {
   // Tüm sistemi etkileyen tek işlem: DEMO_RESET_TOKEN doluysa x-demo-token gerektirir.
   router.post(
     "/reset",
-    requireDemoToken(limits.demoResetToken, "An admin key is required to start a new batch."),
+    requireDemoToken(limits.demoResetToken, "A judge access key is required to start a new batch."),
     handle(async () => {
       const a = await ctx.startNewBatch();
       return { batchId: a.batchId.toString(), batchVault: a.batchVault.toBase58(), mint: a.mint.toBase58() };

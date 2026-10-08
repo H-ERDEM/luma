@@ -32,7 +32,7 @@ Run the steps in order. Phantom asks you to approve only the investor transactio
 | 2 | **Advance to day 20 and exit early** | Writes oracle readings for days 5, 10, 15 and 20, alternating the primary signer and the Ed25519 fallback, then sells half of your seedlings back to the bonding curve. | "Oracle records" lists the readings with their source; the curve price reaches 0.61 USDC; with the default 10 seedlings, 5 are sold for 3.05 USDC. The principal of the remaining seedlings stays in escrow. |
 | 3 | **Trigger a failure and see the insurance** | Simulates a failure: water temperature rises to 33.5 °C and the pump stops. The parametric trigger fires and your remaining seedlings are refunded at the full 0.45 USDC. | The sensor cards turn red, the status becomes "Insurance triggered" and the log shows the principal refund. **The batch is closed.** |
 | 4 | **Harvest, burn and redeem** | Writes the day-40 reading, deposits the OTC buyer's USDC into the vault, and redeems your remaining seedlings at 0.7125 USDC each (0.76 minus the 6.25% protocol fee), burning the tokens. | Your seedlings are burned (the supply drops accordingly) and the log shows the redemption. **The batch is closed.** |
-| – | **Start new batch** | Opens a fresh batch at day 0 so you can replay the demo. | The console header shows the new batch number and "day 0". Requires the **admin key**, see below. |
+| – | **Start new batch** | Opens a fresh batch at day 0 so you can replay the demo. | The console header shows the new batch number and "day 0". Requires the **judge access key**, see below. |
 
 Steps 3 and 4 are two different endings of the same batch, so on one batch you see either the insurance refund (1 → 2 → 3) or the harvest (1 → 2 → 4). To see both, start a new batch in between. Once a batch is closed, steps 1–4 are disabled with "This batch is closed. Start a new batch first."
 
@@ -42,7 +42,7 @@ You can also use the panels on the main page instead of the console: **Get test 
 
 - **The first load can be slow.** The backend runs on Render's free plan, which puts the service to sleep when it is idle. After a quiet period the first request wakes it up, and until then the page may show "Loading batch data…" or a notice that the server may be waking up ("The server may be waking up…"). The page retries on its own. If nothing changes after a minute, open https://luma-backend-t9v4.onrender.com/api/live in a new tab to wake it, then reload.
 - **The demo batch is shared.** Everyone who opens the site sees the same batch. If someone else already advanced or closed it, your steps behave accordingly: step 1 needs a batch at day 0–3, and closed batches need **Start new batch**.
-- **Starting a new batch needs the admin key.** The console has an **Admin key** field next to **Start new batch**. The key is provided in the application form, not here. Steps 1–4 do not need it.
+- **Starting a new batch needs the judge access key.** The console has a **Judge access key** field next to **Start new batch**. The key is provided in the submission, not here. Steps 1–4 do not need it.
 - **Limits protect the demo.** Each wallet is topped up to at most 100 test USDC, with a daily cap on refills, and the demo endpoints are rate limited per IP. If the faucet reports that the daily budget is used up, try again after the UTC day changes.
 - **No SOL in your wallet?** The faucet sends a small amount of Devnet SOL. If the console says the SOL top-up is switched off, get Devnet SOL from https://faucet.solana.com and run the step again.
 
@@ -348,7 +348,7 @@ Dağıtım notları:
 - **Ters vekil arkasında** (Render vb.) `TRUST_PROXY=1` ayarlayın; yoksa tüm istekler vekilin IP'sinden gelmiş görünür ve IP sınırı herkesi aynı kişi sayar. Vekil yokken bu değeri 0 bırakın, aksi halde `X-Forwarded-For` taklit edilebilir.
 - Aynı ağdan (ofis, jüri toplantısı) çok kişi bağlanacaksa `RATE_LIMIT_MAX` değerini yükseltin.
 - `/api/health` admin bakiyesi eşiğin altına inince 503 döndüğü için, dışarıdan bir uptime izleyicisi (ör. UptimeRobot) bakiye azalınca e-posta ile uyarabilir.
-- Demo console'daki "Admin key" alanı `DEMO_RESET_TOKEN` ile eşleşmelidir; anahtarı yalnızca jüriyle paylaşacağınız teslim notlarına yazın.
+- Demo console'daki "Judge access key" alanı `DEMO_RESET_TOKEN` ile eşleşmelidir; anahtarı yalnızca jüriyle paylaşacağınız teslim notlarına yazın.
 
 ---
 
