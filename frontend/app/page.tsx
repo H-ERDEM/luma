@@ -1,6 +1,7 @@
 "use client";
 
 import { DemoConsole } from "@/components/DemoConsole";
+import { DemoDisclaimer } from "@/components/DemoDisclaimer";
 import { GetStarted } from "@/components/GetStarted";
 import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
@@ -11,6 +12,7 @@ import { Splash } from "@/components/Splash";
 export default function Home() {
   return (
     <div id="top">
+      <DemoDisclaimer />
       <Header />
       <main>
         <Hero />

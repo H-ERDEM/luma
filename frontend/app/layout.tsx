@@ -6,7 +6,7 @@ import { Providers } from "@/components/Providers";
 export const metadata: Metadata = {
   title: "LumaGrow · Back a harvest on Solana",
   description:
-    "LumaGrow lets greenhouse growers raise pre-harvest capital from backers whose principal is protected on-chain.",
+    "LumaGrow lets greenhouse growers raise pre-harvest capital from backers whose principal is protected on-chain. Hackathon demo on Solana Devnet — test funds only, no real USDC.",
 };
 
 // Clash Display (başlıklar) + Satoshi (gövde): Fontshare'in kendi CDN stilidir.
