@@ -421,7 +421,7 @@ backend/
   src/ server.ts simulator.ts context.ts chain.ts protocol.ts biology.ts keys.ts store.ts config.ts
 frontend/
   app/ layout.tsx page.tsx globals.css
-  components/ KycBadge.tsx Launchpad.tsx LivePoAPanel.tsx JuryAdminDrawer.tsx SeedTray.tsx Providers.tsx
+  components/ KycBadge.tsx Launchpad.tsx LivePoAPanel.tsx DemoConsole.tsx SeedTray.tsx Providers.tsx
   hooks/useLuma.tsx
   lib/ api.ts luma.ts format.ts env.ts
 ```

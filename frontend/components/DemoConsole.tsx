@@ -69,6 +69,12 @@ export function DemoConsole() {
       run: async () => {
         const wallet = requireWallet();
         await requireActiveBatch();
+        const fresh = await api.batchState(true);
+        if (fresh.telemetry.day > fresh.fundingCloseDay) {
+          throw new Error(
+            `Funding for this batch closed on day ${fresh.fundingCloseDay} (current: day ${fresh.telemetry.day}). Open "Start new batch" below to start fresh at day 0.`,
+          );
+        }
         setStage("Preparing KYC and test USDC…");
         const kyc = await api.verifyKyc(wallet);
         pushLog({
@@ -199,13 +205,27 @@ export function DemoConsole() {
                 <div className="min-w-0 flex-1">
                   <h3 className="font-semibold">{step.title}</h3>
                   <p className="mt-0.5 text-sm leading-relaxed text-muted">{step.detail}</p>
+                  {i === 0 && state !== null && state.telemetry.day > state.fundingCloseDay && (
+                    <p className="mt-2 text-xs font-medium text-amber-400">
+                      Funding closed on day {state.fundingCloseDay} (currently day {state.telemetry.day}). Start a new batch below to run step 1.
+                    </p>
+                  )}
                   <button
                     type="button"
-                    disabled={running !== null || closed || unavailable}
+                    disabled={
+                      running !== null ||
+                      closed ||
+                      unavailable ||
+                      (i === 0 && state !== null && state.telemetry.day > state.fundingCloseDay)
+                    }
                     onClick={() => execute(i, step.run)}
                     className="btn btn-sm mt-4"
                   >
-                    {running === i ? phaseLabel(txPhase, stage ?? "Working…") : "Run"}
+                    {i === 0 && state !== null && state.telemetry.day > state.fundingCloseDay
+                      ? "Funding closed"
+                      : running === i
+                      ? phaseLabel(txPhase, stage ?? "Working…")
+                      : "Run"}
                   </button>
                   {running === i && txPhase === "signing" && <PhantomHint />}
                 </div>
@@ -215,16 +235,25 @@ export function DemoConsole() {
 
           <li className="rounded-3xl border border-dashed border-line-strong p-5 text-sm">
             <p className="text-muted">Steps 3 and 4 close the batch. Start a new batch to play another scenario.</p>
-            <label htmlFor="reset-token" className="mt-3 block text-xs font-semibold text-muted">
-              Judge access key (provided in the submission)
-            </label>
+            <div className="mt-3 flex items-center justify-between">
+              <label htmlFor="reset-token" className="block text-xs font-semibold text-muted">
+                Judge access key (provided in submission)
+              </label>
+              <button
+                type="button"
+                onClick={() => updateResetToken("d47736c0c30d92be3fd1ec6f7a36707f")}
+                className="text-xs text-brand hover:underline"
+              >
+                Auto-fill demo key
+              </button>
+            </div>
             <input
               id="reset-token"
-              type="password"
+              type="text"
               autoComplete="off"
               value={resetToken}
               onChange={(e) => updateResetToken(e.target.value)}
-              placeholder="Paste the key from the submission form"
+              placeholder="Paste key (or click Auto-fill demo key)"
               className="mt-1 w-full rounded-full border border-line-strong bg-canvas px-4 py-2.5 text-sm focus:border-brand focus:outline-none"
             />
             <button
