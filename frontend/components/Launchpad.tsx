@@ -98,13 +98,25 @@ export function Launchpad() {
       )}
 
       {state.status === "Active" && !fundingOpen && !exitOpen && day < state.harvestDay && (
-        <p className="mt-5 rounded-2xl bg-inner p-4 text-sm">
+        <p className="mt-5 rounded-2xl bg-inner p-4 text-sm leading-relaxed">
           Funding closed on day {state.fundingCloseDay}. Early exit opens on day {state.earlyExitDay}.
         </p>
       )}
 
+      {state.status === "Active" && !fundingOpen && exitOpen && owned === 0 && (
+        <p className="mt-5 rounded-2xl bg-inner p-4 text-sm leading-relaxed">
+          Funding closed on day {state.fundingCloseDay} and early exit is open for existing backers. Since you don&apos;t own seedlings in this batch, open the Demo console to start a fresh batch at day 0.
+        </p>
+      )}
+
+      {state.status === "Active" && day >= state.harvestDay && owned === 0 && (
+        <p className="mt-5 rounded-2xl bg-inner p-4 text-sm leading-relaxed">
+          The cycle reached harvest (day {state.harvestDay}). Since you don&apos;t own seedlings in this batch, open the Demo console to start a fresh batch at day 0.
+        </p>
+      )}
+
       {state.status !== "Active" && owned === 0 && (
-        <p className="mt-5 rounded-2xl bg-inner p-4 text-sm">
+        <p className="mt-5 rounded-2xl bg-inner p-4 text-sm leading-relaxed">
           This batch is closed. To replay the demo, open the Demo console and press &ldquo;Start new batch&rdquo;.
         </p>
       )}
