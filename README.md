@@ -1,4 +1,4 @@
-# LumaGrow — AgTech Canlı Varlık Kanıtı (Proof-of-Asset) ve Token-2022
+# LumaGrow
 
 ## Try it live
 
