@@ -64,6 +64,31 @@ pub fn apply_bps(value: u64, bps: u64) -> Result<u64> {
     u64::try_from(r).map_err(|_| error!(LumaError::MathOverflow))
 }
 
+/// Parametrik temerrüt durumunda token başına iade fiyatını sıfıra bölme korumasıyla hesaplar.
+/// circulating == 0 ise unit_price döner. Aksi halde min(unit_price, escrow_balance / circulating).
+pub fn compute_refund_price(escrow_balance: u64, circulating: u64, unit_price: u64) -> Result<u64> {
+    if circulating == 0 {
+        return Ok(unit_price);
+    }
+    let share = u128::from(escrow_balance)
+        .checked_div(u128::from(circulating))
+        .ok_or(LumaError::MathOverflow)?;
+    let share_u64 = u64::try_from(share).map_err(|_| error!(LumaError::MathOverflow))?;
+    Ok(unit_price.min(share_u64))
+}
+
+/// Hasat itfasında protokol komisyonunu düştükten sonra token başına itfa tutarını hesaplar.
+/// Anapara koruma tabanı (unit_price) ile güvenceye alınır.
+pub fn compute_redemption_price(curve_price: u64, harvest_fee_bps: u16, unit_price: u64) -> Result<u64> {
+    require!(
+        u64::from(harvest_fee_bps) <= BPS_DENOMINATOR,
+        LumaError::MathOverflow
+    );
+    let net_bps = BPS_DENOMINATOR - u64::from(harvest_fee_bps);
+    let net_price = apply_bps(curve_price, net_bps)?;
+    Ok(net_price.max(unit_price))
+}
+
 /// Solvency invariantı: escrow_balance ≥ circulating × unit_price.
 pub fn assert_solvent(escrow_balance: u64, circulating: u64, unit_price: u64) -> Result<()> {
     let required = u128::from(circulating)
@@ -116,6 +141,8 @@ mod tests {
         let fv = compute_fair_value(&payload(40, 10_000, 0)).unwrap();
         assert_eq!(fv, 760_000);
         assert_eq!(apply_bps(fv as u64, 10_000 - 625).unwrap(), 712_500);
+        let redemption = compute_redemption_price(fv as u64, 625, 450_000).unwrap();
+        assert_eq!(redemption, 712_500);
     }
 
     #[test]
@@ -127,5 +154,66 @@ mod tests {
     fn solvency_check() {
         assert!(assert_solvent(450_000 * 100, 100, 450_000).is_ok());
         assert!(assert_solvent(450_000 * 100 - 1, 100, 450_000).is_err());
+    }
+
+    #[test]
+    fn test_zero_circulating_refund_price_is_safe() {
+        let refund = compute_refund_price(0, 0, 450_000).unwrap();
+        assert_eq!(refund, 450_000);
+    }
+
+    #[test]
+    fn test_undercollateralized_refund_price_is_fractional() {
+        // Escrow only has 30 USDC, but 100 tokens circulating (0.30 USDC per token instead of 0.45)
+        let refund = compute_refund_price(30_000_000, 100, 450_000).unwrap();
+        assert_eq!(refund, 300_000);
+    }
+
+    #[test]
+    fn test_overcollateralized_refund_price_is_capped_at_unit_price() {
+        // Escrow has 50 USDC for 100 tokens: refund capped at unit_price (450_000)
+        let refund = compute_refund_price(50_000_000, 100, 450_000).unwrap();
+        assert_eq!(refund, 450_000);
+    }
+
+    #[test]
+    fn test_redemption_price_floored_at_unit_price_under_collapse() {
+        // Even if market crashed and curve_price is 400_000 (below unit price),
+        // redemption never falls below 450_000
+        let redemption = compute_redemption_price(400_000, 625, 450_000).unwrap();
+        assert_eq!(redemption, 450_000);
+    }
+
+    #[test]
+    fn test_extreme_market_price_overflow_handling() {
+        let mut p = payload(40, 10_000, 0);
+        p.market_price_per_kg = u64::MAX;
+        p.est_yield_grams = u32::MAX;
+        // Should safely fail with MathOverflow rather than panicking
+        assert!(compute_fair_value(&p).is_err());
+    }
+
+    #[test]
+    fn test_critical_failure_predicates() {
+        let mut p = payload(15, 5_000, 300_000);
+        p.water_temp_centi_c = 3_200; // 32.00 °C: borderline safe
+        p.flow_rate_ml_min = 1_000;
+        assert!(!p.is_critical_failure());
+
+        p.water_temp_centi_c = 3_201; // 32.01 °C: exceeds threshold -> critical failure
+        assert!(p.is_critical_failure());
+
+        p.water_temp_centi_c = 2_100;
+        p.flow_rate_ml_min = 0; // Pump failure (0 ml/min) -> critical failure
+        assert!(p.is_critical_failure());
+    }
+
+    #[test]
+    fn test_sub_zero_temperature_reading() {
+        let mut p = payload(10, 3_000, 350_000);
+        p.water_temp_centi_c = -200; // -2.00 °C
+        // Does not trigger high-temp default, but maintains math stability
+        assert!(!p.is_critical_failure());
+        assert!(compute_fair_value(&p).is_ok());
     }
 }
